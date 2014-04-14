@@ -23,6 +23,6 @@ object BWAMEMSpark {
       //val fastqRDD = fastqRDDLoader.RDDLoad("hdfs://Jc11:9000/user/ytchen/ERR013140_2.filt.fastq.test4/2/")
 
       val bwt = new BWTType()
-      bwt.BWTLoad("/home/pengwei/genomics/ReferenceMetadata/human_g1k_v37.fasta.bwt")
+      bwt.load("/home/pengwei/genomics/ReferenceMetadata/human_g1k_v37.fasta")
    }
 }
