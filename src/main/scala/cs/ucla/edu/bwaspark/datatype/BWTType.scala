@@ -14,7 +14,7 @@ class BWTType {
   // Data Structure
   var primary: Long = _
   var L2: Array[Long] = new Array[Long](5)
-  var seqLeg: Long = _
+  var seqLen: Long = _
   var bwtSize: Long = _
   var bwt: Array[Int] = _
   var cntTable: Array[Int] = new Array[Int](250)
@@ -37,31 +37,30 @@ class BWTType {
     fc.read(smallBuf)
     smallBuf.flip
     primary = smallBuf.getLong(0)
-    println("primary: " + primary)
     smallBuf.rewind
 
     // Read L[1] - L[4] member variables in BWTType
+    L2(0) = 0
     for(i <- 1 to 4) {
       fc.read(smallBuf)
       smallBuf.flip
       L2(i) = smallBuf.getLong(0)
-      println("L2(" + i + "): " + L2(i))
       smallBuf.rewind
     }
+    seqLen = L2(4)
 
     // Read the bwt array in BWTType
     var ret = 0
     var bytesRead: Long = 0
     var numIntRead = 0
-    val numElem = (fileSize - 8 * 5) >> 2
+    bwtSize = (fileSize - 8 * 5) >> 2
 
     println("File size: " + fileSize)
-    println("Number of elements: " + numElem)
 
     // Potential array boundary problem here
     // Enforce the type of numElem to be Int
     // This is because the size of a scala array cannot exceed the Int upper bound
-    bwt = new Array[Int](numElem.asInstanceOf[Int])
+    bwt = new Array[Int](bwtSize.asInstanceOf[Int])
 
     while(ret >= 0) {
       ret = fc.read(buf)
@@ -81,7 +80,14 @@ class BWTType {
     } 
 
     fc.close
+
+    // Debugging messages
     println("Bytes Read: " + (bytesRead + 1))
     println("Num Integers Read: " + numIntRead)
+    println("primary: " + primary)
+    println("bwtSize: " + bwtSize)
+    println("seqLen: " + seqLen)
+    for(i <- 0 to 4) 
+      println("L2(" + i + "): " + L2(i))
   }
 }
