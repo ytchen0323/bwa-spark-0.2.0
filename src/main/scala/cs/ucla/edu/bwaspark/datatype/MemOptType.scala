@@ -1,60 +1,61 @@
 package cs.ucla.edu.bwaspark.datatype 
 
-class MemOptType(
-  a_i: Int,
-  b_i: Int,				// match score and mismatch penalty
-  oDel_i: Int,
-  eDel_i: Int,
-  penUnpaired_i: Int,		// phred-scaled penalty for unpaired reads
-  penClip5_i: Int,		// clipping penalty. This score is not deducted from the DP score.
-  penClip3_i: Int,
-  w_i: Int,				// band width
-  zdrop_i: Int,			// Z-dropoff
+import scala.math.log
+//import scalaz._
 
-  T_i: Int,				// output score threshold; only affecting output
-  flag_i: Int,				// see MEM_F_* macros
-  minSeedLen_i: Int,		// minimum seed length
-  splitFactor_i: Float,	// split into a seed if MEM is longer than min_seed_len*split_factor
-  splitWidth_i: Int,      // split into a seed if its occurence is smaller than this Olue
-  maxOcc_i: Int,          // skip a seed if its occurence is larger than this valuC	maxGhain_gap_i: Int,    // do not chain seed if it is max_chain_gap-bp away from the closest seed
-  maxChainGap_i: Int,
-  //Int n_threads;          // number of tSeads
-  chunkSize_i: Int,         // process chunk_size-bp sLuences in a batch
-  maskLevel_i: Float,       // regard a hit as redundant if the overlap with another better hit is over mask_level times the min length of the two hits
-  chainDropRatio_i: Float, // drop a chain if its seed coverage is below chain_drop_ratio times the seed coverage of a better chain overlapping with the small chain
-  maskLevelRedun_i: Float,
-  mapQCoefLen_i: Float,
-  mapQ_coef_fac_i: Int,
-  maxIns_i: Int,            // when estimating insert size distribution, skip pairs with insert longer than this value
-  maxMatesw_i: Int         // perform maximally max_matesw rounds of mate-SW for each end
-  //int8_t mat[25];    
-  //mat_i: Array[Byte]	  //// scoring matrix;
-  )
+class MemOptType
 {
-  var a = a_i;
-  var b = b_i;
-  var oDel = oDel_i;
-  var eDel = eDel_i;
-  var penUnpaired = penUnpaired_i;
-  var penClip5 = penClip5_i;
-  var penClip3 = penClip3_i;
-  var w = w_i;
-  var zdrop = zdrop_i;
+	var a : Int = 1;
+	var b : Int = 4;
+	var oDel : Int = 6;
+	var eDel : Int = 1;
+	var oIns : Int = 6;
+	var eIns : Int = 1;
+	var penUnpaired : Int  = 17;
+	var penClip5 : Int  = 5;
+	var penClip3 : Int  = 5;
+	var w : Int = 100;
+	var zdrop : Int = 100;
 
-  var T = T_i;
-  var flag = flag_i;
-  var minSeedLen = minSeedLen_i;
-  var splitFactor = splitFactor_i;
-  var splitWidth = splitWidth_i;
-  var maxOcc = maxOcc_i;
-  var maxChainGap = maxChainGap_i;
+	var T : Int = 30;
+	var flag: Int  = 0;
+	var minSeedLen: Int  = 19;
+	var splitFactor: Float  = 1.5f;
+	var splitWidth: Int  = 10;
+	var maxOcc: Int  = 10000;
+	var maxChainGap: Int  = 10000;
 
-  var chunkSize = chunkSize_i;
-  var maskLevel = maskLevel_i;
-  var chainDropRatio = chainDropRatio_i;
-  var maskLevelRedun = maskLevelRedun_i;
-  var mapQCoefLen = mapQCoefLen_i;
-  var maxIns = maxIns_i;
-  var maxMatesw = maxMatesw_i;
-  var mat = Array.fill[Byte](25)(0);//all initialized to 0
+	var chunkSize: Int  = 10000000;
+	var maskLevel: Float  = 0.50f;
+	var chainDropRatio: Float  = 0.50f;
+	var maskLevelRedun: Float  = 0.95f;
+	var mapQCoefLen: Float  = 50f;
+	var mapQCoefFac: Int  = log(mapQCoefLen).asInstanceOf[Int]
+	var maxIns: Int  = 10000;
+	var maxMatesw: Int  = 100;
+	var mat: Array[Byte]  = new Array[Byte](25);//all initialized to 0
+
+	private def bwaFillScmat(){
+	  var k = 0
+	  for(i <- 0 to 3){
+	  	for(j <- 0 to 3){
+		var temp = ( if (i == j)  a else -b)
+		
+	  	  mat(k) = temp.asInstanceOf[Byte]
+	  	  k = k + 1
+	  	}
+	  	mat(k) = -1
+	  	k = k + 1
+	  }
+	  for(j <- 0 to 4){
+	  	mat(k) = -1
+	  	k = k + 1
+	  }
+
+	}
+	
+	def load() {
+		bwaFillScmat()
+	}
+
 }
