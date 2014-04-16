@@ -6,6 +6,8 @@ import java.nio.file.{Files, Path, Paths}
 import java.nio.channels.FileChannel
 import java.nio.ByteOrder
 
+import scala.util.control.Breaks._
+
 object BinaryFileReadUtil {
   val readBufSize = 0x80000  
 
@@ -86,19 +88,32 @@ object BinaryFileReadUtil {
     var ret = 0
     var outputArray = new Array[Byte](arraySize)
     var idx = startIdx
+    var reachSizeLimit = false
 
-    while(ret >= 0) {
-      ret = fc.read(buf)
-      buf.flip
+    breakable {
+      while(ret >= 0) {
+        ret = fc.read(buf)
+        buf.flip
      
-      // Fill the data from buf
-      while(buf.hasRemaining) {
-        val piece = buf.get
-        outputArray(idx) = piece
-        idx += 1
-      }
+        // Fill the data from buf
+        breakable {
+          while(buf.hasRemaining) {
+            val piece = buf.get
+            outputArray(idx) = piece
+            idx += 1
 
-      buf.rewind
+            if(idx >= arraySize) {
+              reachSizeLimit = true
+              break
+            }
+          }
+        }
+
+        if(reachSizeLimit)
+          break
+
+        buf.rewind
+      }
     }
 
     outputArray
