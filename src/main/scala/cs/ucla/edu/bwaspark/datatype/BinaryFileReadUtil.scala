@@ -76,7 +76,8 @@ object BinaryFileReadUtil {
 
   
   /**
-    *  Read an input binary file with Byte type values until the end of the file
+    *  Read an input binary file with Byte type values 
+    *  This function does not assume to read the binary file to the end.
     *
     *  @param fc the given file channel to read the file
     *  @param arraySize the output Byte array size

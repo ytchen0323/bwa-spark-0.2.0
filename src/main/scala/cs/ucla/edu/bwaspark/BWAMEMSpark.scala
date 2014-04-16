@@ -22,8 +22,11 @@ object BWAMEMSpark {
       //val fastqRDDLoader = new FASTQRDDLoader(sc, "hdfs://Jc11:9000/user/ytchen/ERR013140_2.filt.fastq.test4/", 13)
       //val fastqRDD = fastqRDDLoader.RDDLoadAll()
       //val fastqRDD = fastqRDDLoader.RDDLoad("hdfs://Jc11:9000/user/ytchen/ERR013140_2.filt.fastq.test4/2/")
+
+      val idx = new BWAIdxType()
+      idx.load("/home/pengwei/genomics/ReferenceMetadata/human_g1k_v37.fasta", 1)
+
       println("Hello!")
-      //val bwt = new BWTType()
       val opt = new MemOptType()
       opt.load()
       for ( i <- 0 to 24){
