@@ -1,12 +1,8 @@
 package cs.ucla.edu.bwaspark.datatype
 
-import java.io.{FileInputStream, IOException}
-import java.nio.{ByteBuffer}
-import java.nio.file.{Files, Path, Paths}
+import java.io.FileInputStream
 import java.nio.channels.FileChannel
-import java.nio.ByteOrder
 
-import scala.util.control.Breaks._
 import scala.List
 
 import cs.ucla.edu.bwaspark.datatype.BinaryFileReadUtil._

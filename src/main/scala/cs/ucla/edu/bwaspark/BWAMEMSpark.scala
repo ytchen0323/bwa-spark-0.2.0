@@ -8,6 +8,7 @@ import org.apache.spark.rdd.RDD
 import scala.io.{Source, BufferedSource}
 
 import cs.ucla.edu.bwaspark.datatype._
+import cs.ucla.edu.bwaspark.worker1.MemChainToAlign._
 
 object BWAMEMSpark {
    def main(args: Array[String]) {
@@ -21,13 +22,16 @@ object BWAMEMSpark {
       //val fastqRDDLoader = new FASTQRDDLoader(sc, "hdfs://Jc11:9000/user/ytchen/ERR013140_2.filt.fastq.test4/", 13)
       //val fastqRDD = fastqRDDLoader.RDDLoadAll()
       //val fastqRDD = fastqRDDLoader.RDDLoad("hdfs://Jc11:9000/user/ytchen/ERR013140_2.filt.fastq.test4/2/")
-	println("Hello!")
+      println("Hello!")
       //val bwt = new BWTType()
       val opt = new MemOptType()
       opt.load()
       for ( i <- 0 to 24){
-      	println(opt.mat(i))
-	}
+        println(opt.mat(i))
+      }
+
+      readTestData("/home/ytchen/bwa/bwa-0.7.8/log")
+      printAllReads
       //bwt.load("/home/pengwei/genomics/ReferenceMetadata/human_g1k_v37.fasta")
    }
 }
