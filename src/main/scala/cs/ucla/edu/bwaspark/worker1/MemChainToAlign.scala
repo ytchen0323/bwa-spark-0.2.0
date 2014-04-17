@@ -13,7 +13,12 @@ import java.io.{FileReader, BufferedReader}
 object MemChainToAlign {
   val MAX_BAND_TRY = 2    
 
-  var testSeedChains: MutableList[MutableList[MemChainType]] = new MutableList
+  class ReadChain(chains_i: MutableList[MemChainType], seq_i: Array[Byte]) {
+    var chains: MutableList[MemChainType] = chains_i
+    var seq: Array[Byte] = seq_i
+  }
+
+  var testReadChains: MutableList[ReadChain] = new MutableList
   
   /**
     *  Read the test chain data generated from bwa-0.7.8 (C version)
@@ -27,6 +32,8 @@ object MemChainToAlign {
     var chains: MutableList[MemChainType] = new MutableList
     var chainPos: Long = 0
     var seeds: MutableList[MemSeedType] = new MutableList
+    var seq: Array[Byte] = new Array[Byte](101)
+    //var seqLen: Int = 0
 
     while(line != null) {
       val lineFields = line.split(" ")      
@@ -34,6 +41,10 @@ object MemChainToAlign {
       // Find a sequence
       if(lineFields(0) == "Sequence") {
         chains = new MutableList
+        //seqLen = lineFields(1).toInt
+        //seq = new Array[Byte](seqLen)
+        seq = lineFields(2).getBytes
+        seq = seq.map(s => (s - 48).toByte) // ASCII => Byte(Int)
       }
       // Find a chain
       else if(lineFields(0) == "Chain") {
@@ -52,7 +63,8 @@ object MemChainToAlign {
       // append the current list
       else if(lineFields(0) == "SequenceEnd") {
         val cur_chains = chains
-        testSeedChains += cur_chains
+        val cur_seq = seq 
+        testReadChains += (new ReadChain(cur_chains, seq))
       }
 
       line = reader.readLine
@@ -78,7 +90,7 @@ object MemChainToAlign {
                       } )
     }
 
-    testSeedChains.foreach(printChains(_))
+    testReadChains.foreach(r => printChains(r.chains))
   }
 
 
@@ -122,22 +134,30 @@ object MemChainToAlign {
     var alnRegs: List[MemAlnRegType] = Nil
     var aw: Array[Int] = new Array[Int](2)
 
+ 
     // calculate the maximum possible span of this alignment
     rmax = getMaxSpan(opt, pacLen, queryLen, chain)
-    println("rmax(0): " + rmax(0) + ", rmax(1): " + rmax(1))
+    //println("rmax(0): " + rmax(0) + ", rmax(1): " + rmax(1))  // debugging message
 
     // retrieve the reference sequence
-    //(rlen, rseq) = bnsGetSeq(pacLen, pac, rmax(0), rmax(1))
-    //assert(rlen == rmax(1) - rmax(0))
-    //var rseq: Array[Byte] = new Array[Byte](10)  // dummy rseq for compilation use
- 
+    val ret = bnsGetSeq(pacLen, pac, rmax(0), rmax(1))
+    var rseq = ret._1
+    val rlen = ret._2
+    assert(rlen == rmax(1) - rmax(0))
+    // debugging message
+    //println(rlen)     
+    //for(i <- 0 until rlen.toInt)
+      //print(rseq(i).toInt)
+    //println
+
     // Setup the value of srt array
     for(i <- 0 to (chain.seeds.length - 1)) 
       srt(i) = new SRTType(chain.seeds(i).len, i)
 
     srt = srt.sortBy(s => s.len)
-    srt.map(s => println("(" + s.len + ", " + s.index + ")") )  // debugging use
-/*
+    //srt.map(s => println("(" + s.len + ", " + s.index + ")") )  // debugging message
+
+
     // The main for loop
     for(k <- (chain.seeds.length - 1) to 0) {
       val seed = chain.seeds(k)
@@ -189,7 +209,7 @@ object MemChainToAlign {
         else reg.width = aw(1)
       }
     }
-*/
+
   }
 
   // retrieve the reference sequence
@@ -201,10 +221,10 @@ object MemChainToAlign {
     if(end < beg) {//if end is smaller, swap
       endVar = beg
       begVar = end
-  }
-  else {//else keep the value
-    endVar = end
-    begVar = beg
+    }
+    else {//else keep the value
+      endVar = end
+      begVar = beg
     }
     if(endVar > (pacLen<<1)) endVar = pacLen<<1
     if(begVar < 0) begVar = 0
@@ -213,31 +233,31 @@ object MemChainToAlign {
 
     if(begVar >= pacLen || endVar <= pacLen) {
       var k: Long = 0
-      var l: Long = 0
+      var l: Int = 0
       if( begVar >= pacLen ) {//reverse strand
-	var begF: Long = pacLen<<1 - 1 - endVar
-	var endF: Long = pacLen<<1 - 1 - begVar
-	for( k <- endF until begF) {
-	  seq(l.toInt) = ( 3 - getPac(pac, k) ).toByte
-	  l = l + 1
- 	 }
-	}
-      else {
-	for( k <- begVar until endVar ) {
-	  seq(l.toInt) = ( getPac(pac, k) ).toByte
-	  l = l + 1
-	}
+        var begF: Long = (pacLen<<1) - 1 - endVar
+        var endF: Long = (pacLen<<1) - 1 - begVar
+        for( k <- endF to (begF + 1) by -1) {
+          seq(l) = (3 - getPac(pac, k)).toByte
+          l = l + 1
+        }
       }
-	}
-	else
-	  rLen = 0
-
-	(seq, rLen)//return two value
+      else {
+        for( k <- begVar until endVar ) {
+          seq(l) = getPac(pac, k).toByte
+          l = l + 1
+        }
+      }
     }
+    else
+      rLen = 0
+
+    (seq, rLen)//return two value
+  }
   //#define _get_pac(pac, l) ((pac)[(l)>>2]>>((~(l)&3)<<1)&3)
   private def getPac( pac: Array[Byte], l: Long) : Long = {
-	var pacValue: Long = ( pac((l>>2).toInt) >> ((~(l)&3) <<1) ) & 3
-	pacValue
+    var pacValue: Long = ( pac((l>>>2).toInt) >>> (((~l)&3) <<1) ) & 3
+    pacValue
   }
  	
 
@@ -476,9 +496,9 @@ object MemChainToAlign {
     seedcov
   }
  
-  class EHType(e_i: Int, h_i: Int) {
-    var e: Int = e_i
-    var h: Int = h_i
+  class EHType() {
+    var e: Int = _
+    var h: Int = _
   }
 
   private def SWExtend(
@@ -494,6 +514,9 @@ object MemChainToAlign {
     var j = 0 
     var k = 0
     var w = w_i
+
+    for(i <- 0 until (qLen + 1))
+      eh(i) = new EHType
 
     // generate the query profile
     for(k <- 0 to (m - 1)) {
