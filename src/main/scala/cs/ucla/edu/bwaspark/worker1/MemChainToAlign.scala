@@ -101,9 +101,9 @@ object MemChainToAlign {
     else tmp
   }
 
-  class SRTType() {
-    var len: Int = _
-    var index: Int = _
+  class SRTType(len_i: Int, index_i: Int) {
+    var len: Int = len_i
+    var index: Int = index_i
   }
 
   /**
@@ -126,21 +126,17 @@ object MemChainToAlign {
     rmax = getMaxSpan(opt, pacLen, queryLen, chain)
     println("rmax(0): " + rmax(0) + ", rmax(1): " + rmax(1))
 
-    println(chain.seeds.length)
-
     // retrieve the reference sequence
     //(rlen, rseq) = bnsGetSeq(pacLen, pac, rmax(0), rmax(1))
     //assert(rlen == rmax(1) - rmax(0))
     //var rseq: Array[Byte] = new Array[Byte](10)  // dummy rseq for compilation use
  
     // Setup the value of srt array
-    for(i <- 0 to (chain.seeds.length - 1)) {
-      srt(i).len = chain.seeds(i).len 
-      srt(i).index = i
-    }
+    for(i <- 0 to (chain.seeds.length - 1)) 
+      srt(i) = new SRTType(chain.seeds(i).len, i)
 
     srt = srt.sortBy(s => s.len)
-    //srt.map(s => println("(" + s._1 + ", " + s._2 + ")") )  // debugging use
+    srt.map(s => println("(" + s.len + ", " + s.index + ")") )  // debugging use
 /*
     // The main for loop
     for(k <- (chain.seeds.length - 1) to 0) {
