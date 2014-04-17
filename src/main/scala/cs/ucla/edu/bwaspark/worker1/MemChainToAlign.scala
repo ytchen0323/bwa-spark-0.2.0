@@ -196,6 +196,56 @@ object MemChainToAlign {
 */
   }
 
+  // retrieve the reference sequence
+  // scala: l_pac, pac, rmax[0], rmax[1], return &rlen, return rseq
+  // c: l_pac, pac, beg, end, len, return rseq
+  private def bnsGetSeq(pacLen: Long, pac: Array[Byte], beg: Long, end: Long) : (Array[Byte], Long) = {
+    var endVar: Long = 0//for swapping
+    var begVar: Long = 0//for swapping 
+    if(end < beg) {//if end is smaller, swap
+      endVar = beg
+      begVar = end
+  }
+  else {//else keep the value
+    endVar = end
+    begVar = beg
+    }
+    if(endVar > (pacLen<<1)) endVar = pacLen<<1
+    if(begVar < 0) begVar = 0
+    var rLen: Long = endVar - begVar// for return rlen
+    var seq: Array[Byte] = new Array[Byte](rLen.toInt)//for return seq
+
+    if(begVar >= pacLen || endVar <= pacLen) {
+      var k: Long = 0
+      var l: Long = 0
+      if( begVar >= pacLen ) {//reverse strand
+	var begF: Long = pacLen<<1 - 1 - endVar
+	var endF: Long = pacLen<<1 - 1 - begVar
+	for( k <- endF until begF) {
+	  seq(l.toInt) = ( 3 - getPac(pac, k) ).toByte
+	  l = l + 1
+ 	 }
+	}
+      else {
+	for( k <- begVar until endVar ) {
+	  seq(l.toInt) = ( getPac(pac, k) ).toByte
+	  l = l + 1
+	}
+      }
+	}
+	else
+	  rLen = 0
+
+	(seq, rLen)//return two value
+    }
+  //#define _get_pac(pac, l) ((pac)[(l)>>2]>>((~(l)&3)<<1)&3)
+  private def getPac( pac: Array[Byte], l: Long) : Long = {
+	var pacValue: Long = ( pac((l>>2).toInt) >> ((~(l)&3) <<1) ) & 3
+	pacValue
+  }
+ 	
+
+
   // get the max possible span
   private def getMaxSpan(opt: MemOptType, pacLen: Long, queryLen: Int, chain: MemChainType): Array[Long] = {
     var rmax: Array[Long] = new Array[Long](2)
