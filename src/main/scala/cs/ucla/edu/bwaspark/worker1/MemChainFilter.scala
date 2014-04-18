@@ -123,9 +123,9 @@ object MemChainFilter {
             val chainLenI = chainWrapperArray(i).end - chainWrapperArray(i).beg
             val minLen = min(chainLenI, chainLenJ)
             //if there is significant overlap, mark the flag to true
-            if ( (endMin - beginMax) >= minLen * opt.mask_level ) {
+            if ( (endMin - beginMax) >= minLen * opt.maskLevel ) {
               if (wrappersAfterFilter(j).secondChain == null) wrappersAfterFilter(j).secondChain = chainWrapperArray(i).mainChain
-              if (chainWrapperArray(i).weight < wrappersAfterFilter(j).weight * opt.chain_drop_ratio && wrappersAfterFilter(j).weight - chainWrapperArray(i).weight >= opt.min_seed_len * 2) isOverlap = true
+              if (chainWrapperArray(i).weight < wrappersAfterFilter(j).weight * opt.chainDropRatio && wrappersAfterFilter(j).weight - chainWrapperArray(i).weight >= opt.minSeedLen * 2) isOverlap = true
             }
           }
 

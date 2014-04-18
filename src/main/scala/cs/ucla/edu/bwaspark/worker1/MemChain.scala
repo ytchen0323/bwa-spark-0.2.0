@@ -65,7 +65,7 @@ object MemChain {
   def generateChainTree(opt: MemOptType, l_pac: Long, smemItr: SMemItrType): TreeSet[MemChainType] = {
 
     //calculate splitLen
-    val splitLen = min((opt.min_seed_len * opt.split_factor + 0.499).toInt, smemItr.len)
+    val splitLen = min((opt.minSeedLen * opt.splitFactor + 0.499).toInt, smemItr.len)
 
     //!!!be careful!!!
     //we temporarily assign startWidth as 1 other than 2
@@ -83,7 +83,7 @@ object MemChain {
     //go through each seed, either
     //1) merge it to existing chain
     //2) generate new chain from it
-    while ( (bwtIntvOnPoint = smemNext(smemItr, splitLen, opt.split_width, startWidth)) != null ) {
+    while ( (bwtIntvOnPoint = smemNext(smemItr, splitLen, opt.splitWidth, startWidth)) != null ) {
       //traverse all the seeds
       for (i <- 0 until bwtIntvOnPoint.length) {
 
@@ -91,7 +91,7 @@ object MemChain {
         val seedLen = bwtIntvOnPoint(i).endPoint - bwtIntvOnPoint(i).startPoint
 
         //ignore the seed if it it too short or too repetitive
-        if (seedLen < opt.min_seed_len || bwtIntvOnPoint(i).s > opt.max_occ) {
+        if (seedLen < opt.minSeedLen || bwtIntvOnPoint(i).s > opt.maxOcc) {
           //do nothing
         }
         //the statements in the else clause are the main part
@@ -163,8 +163,8 @@ object MemChain {
                   if (y >= 0 &&
                       x - y <= opt.w &&
                       y - x <= opt.w &&
-                      x - chain.seeds.last.len < opt.max_chain_gap &&
-                      y - chain.seeds.last.len < opt.max_chain_gap) {
+                      x - chain.seeds.last.len < opt.maxChainGap &&
+                      y - chain.seeds.last.len < opt.maxChainGap) {
                     //all the conditions are satisfied? growing the chain
                     chain += seed
                     true //return true
@@ -221,7 +221,7 @@ object MemChain {
   def generateChains(opt: MemOptType, bwt: BWTType, l_pac: Long, len: Int, seq: Array[Int]): Array[MemChainType] = {
     
     //if the query is shorter than the seed length, no match, return null
-    if (len < opt.min_seed_len) {
+    if (len < opt.minSeedLen) {
       null
     }
     //the else part the real meaty part for this function
