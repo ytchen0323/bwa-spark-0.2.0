@@ -128,10 +128,10 @@ object MemChainToAlign {
     *  @param chain one of the mem chains of the read
     */
   //def memChainToAln(opt: MemOptType, pacLen: Long, pac: Array[Byte], queryLen: Int, chain: MemChainType): RDD[MemAlnRegType] = {
-  def memChainToAln(opt: MemOptType, pacLen: Long, pac: Array[Byte], queryLen: Int, query: Array[Byte], chain: MemChainType) {
+  def memChainToAln(opt: MemOptType, pacLen: Long, pac: Array[Byte], queryLen: Int, query: Array[Byte], chain: MemChainType): MutableList[MemAlnRegType] = {
     var rmax: Array[Long] = new Array[Long](2)   
     var srt: Array[SRTType] = new Array[SRTType](chain.seeds.length) 
-    var alnRegs: List[MemAlnRegType] = Nil
+    var alnRegs: MutableList[MemAlnRegType] = new MutableList[MemAlnRegType]
     var aw: Array[Int] = new Array[Int](2)
 
  
@@ -160,11 +160,15 @@ object MemChainToAlign {
 
     // The main for loop
     for(k <- (chain.seeds.length - 1) to 0) {
-      val seed = chain.seeds(k)
+      val seed = chain.seeds( srt(k).index )
       var i = testExtension(opt, seed, alnRegs)
+     
+      //println("Test1: " + i)
 
       if(i < alnRegs.length) i = checkOverlapping(k + 1, seed, chain, srt)
       
+      //println("Test2: " + i + ", Chain seed length: " + chain.seeds.length)
+
       // no overlapping seeds; then skip extension
       if(i == chain.seeds.length) {
         srt(k).index = 0  // mark that seed extension has not been performed
@@ -180,36 +184,46 @@ object MemChainToAlign {
         reg.trueScore = -1
      
         // left extension
+        println("s.qbeg: " + seed.qBeg)
         if(seed.qBeg > 0) {
           val ret = leftExtension(opt, seed, rmax, query, rseq, reg) 
           reg = ret._1
           aw(0) = ret._2
+          println("LEX qbeg: " + reg.qBeg + ", rbeg: " + reg.rBeg)
         }
         else {
           reg.score = seed.len * opt.a
           reg.trueScore = seed.len * opt.a
           reg.qBeg = 0
           reg.rBeg = seed.rBeg
+          println("NLEX qbeg: " + reg.qBeg + ", rbeg: " + reg.rBeg)
         }
-                    
+            
         // right extension
+        println("s.qbeg: " + seed.qBeg + ", s.len: " + seed.len + ", queryLen: " + queryLen)
         if((seed.qBeg + seed.len) != queryLen) {
           val ret = rightExtension(opt, seed, rmax, query, queryLen, rseq, reg)
           reg = ret._1
           aw(1) = ret._2
+          println("REX qend: " + reg.qEnd + ", rend: " + reg.rEnd)
         }
         else {
           reg.qEnd = queryLen
           reg.rEnd = seed.rBeg + seed.len
+          println("NREX qend: " + reg.qEnd + ", rend: " + reg.rEnd)
         }
   
         reg.seedCov = computeSeedCoverage(chain, reg)
 
         if(aw(0) > aw(1)) reg.width = aw(0)
         else reg.width = aw(1)
+
+        // push the current align reg into the output list
+        alnRegs += reg
       }
     }
 
+    alnRegs
   }
 
   // retrieve the reference sequence
@@ -292,7 +306,7 @@ object MemChainToAlign {
    
   // test whether extension has been made before
   // NOTE: need to be tested!!!
-  private def testExtension(opt: MemOptType, seed: MemSeedType, regs: List[MemAlnRegType]): Int = {
+  private def testExtension(opt: MemOptType, seed: MemSeedType, regs: MutableList[MemAlnRegType]): Int = {
     var rDist: Long = -1 
     var qDist: Int = -1
     var maxGap: Int = -1
@@ -462,19 +476,18 @@ object MemChainToAlign {
 
         if(regResult.score == prev || ( maxoff < (aw >> 1) + (aw >> 2) ) ) break
       }
-
-      // check whether we prefer to reach the end of the query
-      // local extension
-      if(gscore <= 0 || gscore <= (regResult.score - opt.penClip3)) {
-        regResult.qEnd = qe + qle
-        regResult.rEnd = rmax(0) + re + tle
-        regResult.trueScore += regResult.score - sc0
-      }
-      else {
-        regResult.qEnd = queryLen
-        regResult.rEnd = rmax(0) + re + gtle
-        regResult.trueScore += gscore - sc0
-      }
+    }
+    // check whether we prefer to reach the end of the query
+    // local extension
+    if(gscore <= 0 || gscore <= (regResult.score - opt.penClip3)) {
+      regResult.qEnd = qe + qle
+      regResult.rEnd = rmax(0) + re + tle
+      regResult.trueScore += regResult.score - sc0
+    }
+    else {
+      regResult.qEnd = queryLen
+      regResult.rEnd = rmax(0) + re + gtle
+      regResult.trueScore += gscore - sc0
     }
 
     (regResult, aw)
@@ -496,9 +509,9 @@ object MemChainToAlign {
     seedcov
   }
  
-  class EHType() {
-    var e: Int = _
-    var h: Int = _
+  class EHType(e_i: Int, h_i: Int) {
+    var e: Int = e_i
+    var h: Int = h_i
   }
 
   private def SWExtend(
@@ -516,7 +529,7 @@ object MemChainToAlign {
     var w = w_i
 
     for(i <- 0 until (qLen + 1))
-      eh(i) = new EHType
+      eh(i) = new EHType(0, 0)
 
     // generate the query profile
     for(k <- 0 to (m - 1)) {
