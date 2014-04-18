@@ -63,7 +63,7 @@ object MemChainFilter {
       //1)weight += the extended part
       //2)current end = the end of this seed
       else if (chain.seeds(i).rBeg + chain.seeds(i).len > curRefEnd) {
-        weightRef += (chain.seeds(i).rBeg + chain.seeds(i).len - curRefEnd)
+        weightRef += (chain.seeds(i).rBeg + chain.seeds(i).len - curRefEnd).toInt
         curRefEnd = chain.seeds(i).rBeg + chain.seeds(i).len
       }
       //else, do nothing
@@ -98,7 +98,7 @@ object MemChainFilter {
       chainWrapperArray = chainWrapperArray.sortWith( (a, b) => a.weight > b.weight )
 
       //second step: filtering
-      var wrappersAfterFilter = new MemChainWrapperType[MemChainType]
+      var wrappersAfterFilter = new MutableList[MemChainWrapperType]()
       
       //the first chain in the new chain array will automatically be added
       wrappersAfterFilter += chainWrapperArray(0)
@@ -129,7 +129,7 @@ object MemChainFilter {
             }
           }
 
-          j++
+          j = j + 1
 
         }
         //if not isOverlap, then add the chain to result array
