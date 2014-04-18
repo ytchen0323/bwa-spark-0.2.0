@@ -6,6 +6,7 @@ import org.apache.spark.rdd.RDD
 //import org.apache.spark.storage.StorageLevel
 
 import scala.io.{Source, BufferedSource}
+import scala.collection.mutable.MutableList
 
 import cs.ucla.edu.bwaspark.datatype._
 import cs.ucla.edu.bwaspark.worker1.MemChainToAlign._
@@ -26,15 +27,47 @@ object BWAMEMSpark {
       val idx = new BWAIdxType()
       idx.load("/home/pengwei/genomics/ReferenceMetadata/human_g1k_v37.fasta", 1)
 
-      println("Hello!")
+      //println("Hello!")
       val opt = new MemOptType()
       opt.load()
-      for ( i <- 0 to 24){
-        println(opt.mat(i))
-      }
+      //for ( i <- 0 to 24){
+      //  println(opt.mat(i))
+      //}
 
-      readTestData("/home/ytchen/bwa/bwa-0.7.8/log")
-      printAllReads
-      //bwt.load("/home/pengwei/genomics/ReferenceMetadata/human_g1k_v37.fasta")
+      readTestData("/home/ytchen/bwa/bwa-0.7.8/log_1read")
+      //printAllReads
+
+      // debugging message
+      testReadChains.foreach( read => {
+        print("Sequence ")
+        for(i <- 0 to 100)
+          print(read.seq(i))
+        println
+      } )
+
+
+      //testReadChains.foreach( read => read.chains.map( chain => memChainToAln(opt, idx.bns.l_pac, idx.pac, 101, read.seq, chain) ) )
+
+      
+      testReadChains.foreach( read => {
+        var regs = new MutableList[MemAlnRegType]
+
+        read.chains.map( chain => {
+          regs ++= memChainToAln(opt, idx.bns.l_pac, idx.pac, 101, read.seq, chain) 
+          } ) 
+
+        // print all regs for a single read
+        var i = 0
+        regs.foreach(r => {
+          print("Reg " + i + "(")
+          print(r.rBeg + ", " + r.rEnd + ", " + r.qBeg + ", " + r.qEnd + ", " + r.score + ", " + r.trueScore + ", ")
+          println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ")")
+          i += 1
+          } )
+
+        } )
+
+
+            //bwt.load("/home/pengwei/genomics/ReferenceMetadata/human_g1k_v37.fasta")
    }
 }
