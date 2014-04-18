@@ -23,12 +23,15 @@ object BWAMemWorker1 {
                     ): MutableList[MemAlnReg] = { //all possible alignment  
 
     //for paired alignment, to add
-    if (!(opt.flag & MEM_F_PE)) {
+    //!!!to add!!!
+    //for now, we only focus on single sequence alignment
+    //if (!(opt.flag & MEM_F_PE)) {
+    if (true) {
 
-      //pre-process: transform A/T/C/G to 0,1,2,3
+      //pre-process: transform A/C/G/T to 0,1,2,3
 
       def locusEncode(locus: Int): Int = {
-        //transforming from A/T/C/G to 0,1,2,3
+        //transforming from A/C/G/T to 0,1,2,3
         locus match {
           case 'A' => 0
           case 'a' => 0
@@ -55,5 +58,10 @@ object BWAMemWorker1 {
       val alignRegArray = memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered)  
 
       alignRegArray
+    }
+    else {
+      assert (false)
+      null
+    }
   }
 }
