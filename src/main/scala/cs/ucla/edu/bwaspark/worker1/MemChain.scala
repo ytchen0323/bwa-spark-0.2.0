@@ -9,6 +9,57 @@ import java.util.Comparator
 //standalone object for generating all MEM chains for each read
 object MemChain {
 
+  //get the next start point for forward and backward extension
+
+  def smemNext(itr: SMemItrType, splitLen: Int, splitWidth: Int, startWidth: Int): MutableList[BWTIntvType] = {
+    //if the start point has exceeded the length
+    //or it has gone back to negative number
+    //return null 
+    if (itr.start >= itr.len || itr->start < 0) null
+    else {
+      //skip ambiguous bases
+      while (itr.start < itr.len && itr.query[itr.start] > 3) itr.start += 1
+
+      //if all the bases left are N bases, return null
+      if (itr.start == itr.len) null
+
+      else {
+        //skipping all the N bases, the point is actually the real start point
+        var oriStart = itr.start
+
+        //now, call the bwtSMem1 to generate the next start point
+        itr.start = bwtSMem1(itr.bwt, itr.len, itr.query, oriStart, startWidth, itr.matches, itr.tmpVec0, itr.tmpVec1)
+
+        assert (itr.matches.length > 0) //in theory, there is at least one match
+
+        //looking for the longest match
+        var maxBWTIntv = itr.matches.maxBy(ele => (ele.endPoint - ele.startPoint))
+        var maxLength = maxBWTIntv.endPoint - maxBWTIntv.startPoint
+        var middlePointOfMax = (maxBWTIntv.endPoint + maxBWTIntv.startPoint) / 2
+
+        //if the longest SMEM is unique and long
+        if (splitLen > 0 && splitLen <= maxLength && maxBWTIntv.s <= splitWidth) {
+
+          //re-do the seeding process starting from the middle of the longest MEM
+          val tmp = bwtSMem1(itr.bwt, itr.len, itr.query, middlePointOfMax, maxBWTIntv.s + 1, itr.sub, itr.tmpVec0, itr.tmpVec1)
+
+          //only some seeds in the sub array can still be there
+          //1)length of the seed should be no less than maxLength/2
+          //2)endPoint should exceed original start point
+          itr.sub = itr.sub.filter(ele => ((ele.endPoint - ele.startPoint) >= maxLength / 2) &&
+                                 ele.endPoint > oriStart)
+
+          //merge itr.match and itr.sub and sort by start point (end point if start point equals)
+          itr.match = (itr.match.++(itr.sub)).sortWith((a, b) => (if (a.startPoint < b.startPoint) true else if (a.startPoint > b.startPoint) false else a.endPoint < b.endPoint)
+        }
+
+        var res = new MutableList[BWTIntvType]
+        res = res.++(itr.match)
+        res
+      }
+    }
+  }
+
   //generate a chain tree for each read
 
   def generateChainTree(opt: MemOptType, l_pac: Long, smemItr: SMemItrType): TreeSet[MemChainType] = {
