@@ -128,10 +128,13 @@ object MemChainToAlign {
     *  @param chain one of the mem chains of the read
     */
   //def memChainToAln(opt: MemOptType, pacLen: Long, pac: Array[Byte], queryLen: Int, chain: MemChainType): RDD[MemAlnRegType] = {
-  def memChainToAln(opt: MemOptType, pacLen: Long, pac: Array[Byte], queryLen: Int, query: Array[Byte], chain: MemChainType): MutableList[MemAlnRegType] = {
+  def memChainToAln(opt: MemOptType, pacLen: Long, pac: Array[Byte], queryLen: Int, query: Array[Byte], 
+    chain: MemChainType, regs: MutableList[MemAlnRegType]): MutableList[MemAlnRegType] = {
+
     var rmax: Array[Long] = new Array[Long](2)   
     var srt: Array[SRTType] = new Array[SRTType](chain.seeds.length) 
-    var alnRegs: MutableList[MemAlnRegType] = new MutableList[MemAlnRegType]
+    //var alnRegs: MutableList[MemAlnRegType] = new MutableList[MemAlnRegType]
+    var alnRegs = regs
     var aw: Array[Int] = new Array[Int](2)
 
  
@@ -159,18 +162,18 @@ object MemChainToAlign {
 
 
     // The main for loop
-    for(k <- (chain.seeds.length - 1) to 0) {
+    for(k <- (chain.seeds.length - 1) to 0 by -1) {
       val seed = chain.seeds( srt(k).index )
       var i = testExtension(opt, seed, alnRegs)
      
-      //println("Test1: " + i)
+      println("Test1: " + i + ", regs length: " + alnRegs.length)
 
-      if(i < alnRegs.length) i = checkOverlapping(k + 1, seed, chain, srt)
+      var checkoverlappingRet = -1
+
+      if(i < alnRegs.length) checkoverlappingRet = checkOverlapping(k + 1, seed, chain, srt)
       
-      //println("Test2: " + i + ", Chain seed length: " + chain.seeds.length)
-
       // no overlapping seeds; then skip extension
-      if(i == chain.seeds.length) {
+      if((i < alnRegs.length) && (checkoverlappingRet == chain.seeds.length)) {
         srt(k).index = 0  // mark that seed extension has not been performed
       }
       else {
@@ -184,33 +187,33 @@ object MemChainToAlign {
         reg.trueScore = -1
      
         // left extension
-        println("s.qbeg: " + seed.qBeg)
+        //println("s.qbeg: " + seed.qBeg)
         if(seed.qBeg > 0) {
           val ret = leftExtension(opt, seed, rmax, query, rseq, reg) 
           reg = ret._1
           aw(0) = ret._2
-          println("LEX qbeg: " + reg.qBeg + ", rbeg: " + reg.rBeg)
+          //println("LEX qbeg: " + reg.qBeg + ", rbeg: " + reg.rBeg)
         }
         else {
           reg.score = seed.len * opt.a
           reg.trueScore = seed.len * opt.a
           reg.qBeg = 0
           reg.rBeg = seed.rBeg
-          println("NLEX qbeg: " + reg.qBeg + ", rbeg: " + reg.rBeg)
+          //println("NLEX qbeg: " + reg.qBeg + ", rbeg: " + reg.rBeg)
         }
             
         // right extension
-        println("s.qbeg: " + seed.qBeg + ", s.len: " + seed.len + ", queryLen: " + queryLen)
+        //println("s.qbeg: " + seed.qBeg + ", s.len: " + seed.len + ", queryLen: " + queryLen)
         if((seed.qBeg + seed.len) != queryLen) {
           val ret = rightExtension(opt, seed, rmax, query, queryLen, rseq, reg)
           reg = ret._1
           aw(1) = ret._2
-          println("REX qend: " + reg.qEnd + ", rend: " + reg.rEnd)
+          //println("REX qend: " + reg.qEnd + ", rend: " + reg.rEnd)
         }
         else {
           reg.qEnd = queryLen
           reg.rEnd = seed.rBeg + seed.len
-          println("NREX qend: " + reg.qEnd + ", rend: " + reg.rEnd)
+          //println("NREX qend: " + reg.qEnd + ", rend: " + reg.rEnd)
         }
   
         reg.seedCov = computeSeedCoverage(chain, reg)
@@ -221,6 +224,7 @@ object MemChainToAlign {
         // push the current align reg into the output list
         alnRegs += reg
       }
+
     }
 
     alnRegs
@@ -386,6 +390,7 @@ object MemChainToAlign {
       }
     }
 
+    println("Test2: " + breakIdx + ", Chain seed length: " + chain.seeds.length)
     breakIdx
   }
 
@@ -532,6 +537,7 @@ object MemChainToAlign {
       eh(i) = new EHType(0, 0)
 
     // generate the query profile
+    i = 0
     for(k <- 0 to (m - 1)) {
       val p = k * m
       
@@ -540,6 +546,11 @@ object MemChainToAlign {
         i += 1
       }
     }
+    
+    // debugging
+    //for(i <- 0 to (qLen*m - 1))
+      //print(qp(i) + " ")
+    //println
 
     // fill the first row
     eh(0).h = h0
@@ -550,6 +561,11 @@ object MemChainToAlign {
       eh(j).h = eh(j-1).h - eIns
       j += 1
     }
+
+    // debugging
+    //for(i <- 0 to qLen)
+      //print(eh(i).h + " ")
+    //println
 
     // adjust $w if it is too large
     k = m * m
@@ -573,11 +589,14 @@ object MemChainToAlign {
     var beg = 0
     var end = qLen
 
+    // debugging
+    //println(max + " " + maxIns + " " + maxDel + " " + max_i + " " + max_j + " " + max_ie + " " + gscore + " " + max_off + " " + beg + " " + end)
+
     breakable {
       for(i <- 0 to (tLen - 1)) {
-        var t = -1
+        var t = 0
         var f = 0
-        var h1 = -1
+        var h1 = 0
         var m = 0
         var mj = -1
         var qPtr = target(i) * qLen
@@ -616,8 +635,14 @@ object MemChainToAlign {
           if(t < 0) t = 0
           f -= eIns
           if(f < t) f = t
+
+          // debugging
+          //println(t + " " + f + " " + h1 + " " + m + " " + mj)
         }
       
+        // debugging
+        //println("##########")
+
         eh(end).h = h1
         eh(end).e = 0
         // end == j after the previous loop
@@ -647,15 +672,17 @@ object MemChainToAlign {
         // update beg and end for the next round
         j = mj
         while(j >= beg && eh(j).h > 0) {
-          beg = j + 1
           j -= 1
         }
+        beg = j + 1
+
         j = mj + 2
         while(j <= end && eh(j).h > 0) {
-          end = j
           j += 1
         }
+        end = j
       }
+
     }
 
     retArray(0) = max
