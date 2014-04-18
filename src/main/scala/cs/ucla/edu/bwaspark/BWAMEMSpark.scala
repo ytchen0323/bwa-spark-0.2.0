@@ -34,7 +34,7 @@ object BWAMEMSpark {
       //  println(opt.mat(i))
       //}
 
-      readTestData("/home/ytchen/bwa/bwa-0.7.8/log_1read")
+      readTestData("/home/ytchen/bwa/bwa-0.7.8/log_20reads")
       //printAllReads
 
       // debugging message
@@ -48,7 +48,22 @@ object BWAMEMSpark {
 
       //testReadChains.foreach( read => read.chains.map( chain => memChainToAln(opt, idx.bns.l_pac, idx.pac, 101, read.seq, chain) ) )
 
-      
+
+      testReadChains.foreach( read => {
+        var regs = new MutableList[MemAlnRegType]
+        for(i <- 0 to (read.chains.length - 1)) 
+          regs = memChainToAln(opt, idx.bns.l_pac, idx.pac, 101, read.seq, read.chains(i), regs)
+        
+        // print all regs for a single read
+        var i = 0
+        regs.foreach(r => {
+          print("Reg " + i + "(")
+          print(r.rBeg + ", " + r.rEnd + ", " + r.qBeg + ", " + r.qEnd + ", " + r.score + ", " + r.trueScore + ", ")
+          println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ") " + regs.length)
+          i += 1
+          } )
+        } )
+/*      
       testReadChains.foreach( read => {
         var regs = new MutableList[MemAlnRegType]
 
@@ -61,12 +76,12 @@ object BWAMEMSpark {
         regs.foreach(r => {
           print("Reg " + i + "(")
           print(r.rBeg + ", " + r.rEnd + ", " + r.qBeg + ", " + r.qEnd + ", " + r.score + ", " + r.trueScore + ", ")
-          println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ")")
+          println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ") " + regs.length)
           i += 1
           } )
 
         } )
-
+*/
 
             //bwt.load("/home/pengwei/genomics/ReferenceMetadata/human_g1k_v37.fasta")
    }
