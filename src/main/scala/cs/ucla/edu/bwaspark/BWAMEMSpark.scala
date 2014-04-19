@@ -10,6 +10,7 @@ import scala.collection.mutable.MutableList
 
 import cs.ucla.edu.bwaspark.datatype._
 import cs.ucla.edu.bwaspark.worker1.MemChainToAlign._
+import cs.ucla.edu.bwaspark.worker1.MemSortAndDedup._
 
 object BWAMEMSpark {
    def main(args: Array[String]) {
@@ -51,9 +52,12 @@ object BWAMEMSpark {
 
       testReadChains.foreach( read => {
         var regs = new MutableList[MemAlnRegType]
+
         for(i <- 0 to (read.chains.length - 1)) 
           regs = memChainToAln(opt, idx.bns.l_pac, idx.pac, 101, read.seq, read.chains(i), regs)
-        
+       
+        regs = memSortAndDedup(regs, opt.maskLevelRedun)
+ 
         // print all regs for a single read
         var i = 0
         regs.foreach(r => {
@@ -62,7 +66,11 @@ object BWAMEMSpark {
           println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ") " + regs.length)
           i += 1
           } )
+
+
         } )
+
+
 /*      
       testReadChains.foreach( read => {
         var regs = new MutableList[MemAlnRegType]
@@ -84,5 +92,5 @@ object BWAMEMSpark {
 */
 
             //bwt.load("/home/pengwei/genomics/ReferenceMetadata/human_g1k_v37.fasta")
-   }
+   } 
 }
