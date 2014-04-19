@@ -7,6 +7,7 @@ import java.util.Comparator
 import cs.ucla.edu.bwaspark.worker1.MemChain._
 import cs.ucla.edu.bwaspark.worker1.MemChainFilter._
 import cs.ucla.edu.bwaspark.worker1.MemChainToAlign._
+import cs.ucla.edu.bwaspark.worker1.MemSortAndDedup._
 
 //this standalone object defines the main job of BWA MEM:
 //1)for each read, generate all the possible seed chains
@@ -56,9 +57,14 @@ object BWAMemWorker1 {
       val chainsFiltered = memChainFilter(opt, chains)
 
       //third step: for each chain, from chain to aligns
-      val alignRegArray = chainsFiltered.map(ele => memChainToAln(opt, bns.l_pac, pac, len, read, ele)).reduce( (a,b) => a ++= b)
+      val regs = new MutableList[MemAlnRegType]
+      val alignRegArray = chainsFiltered.map(ele => memChainToAln(opt, bns.l_pac, pac, len, read, ele, regs)).reduce( (a,b) => b)
 
-      alignRegArray
+      //last step: sorting and deduplication
+
+      val pureRegArray = memSortAndDedup(alignRegArray, opt.maskLevelRedun)
+
+      pureRegArray
     }
     else {
       assert (false)
