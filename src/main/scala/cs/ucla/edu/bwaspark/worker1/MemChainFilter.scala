@@ -112,7 +112,7 @@ object MemChainFilter {
         var isOverlap = false
         var j = 0
 
-        while (!isOverlap && j < newChainArray.length) {
+        while (!isOverlap && j < wrappersAfterFilter.length) {
           //judge if there is significant overlap between i and j
           val beginMax = if (wrappersAfterFilter(j).beg > chainWrapperArray(i).beg) wrappersAfterFilter(j).beg else chainWrapperArray(i).beg
           val endMin = if (wrappersAfterFilter(j).end > chainWrapperArray(i).end) wrappersAfterFilter(j).end else chainWrapperArray(i).end
