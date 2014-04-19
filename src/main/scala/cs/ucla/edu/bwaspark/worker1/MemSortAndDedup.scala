@@ -7,6 +7,13 @@ import scala.collection.mutable.MutableList
 import cs.ucla.edu.bwaspark.datatype._
 
 object MemSortAndDedup {
+  /**
+    *  Sort the MemAlnRegs according to the given order
+    *  and remove the redundant MemAlnRegs
+    *  
+    *  @param regsIn alignment registers, which are the output of chain to alignment (after memChainToAln() is applied)
+    *  @param maskLevelRedun mask level of redundant alignment registers (from MemOptType object)
+    */
   def memSortAndDedup(regsIn: MutableList[MemAlnRegType], maskLevelRedun: Float): MutableList[MemAlnRegType] = {
     if(regsIn.length <= 1) {
       regsIn
@@ -55,24 +62,13 @@ object MemSortAndDedup {
 
       // exclude identical hits
       regs = regs.filter(r => (r.qEnd > r.qBeg))
-/*
-      // print all regs for a single read
-      var i = 0
-      regs.foreach(r => {
-        print("Reg " + i + "(")
-        print(r.rBeg + ", " + r.rEnd + ", " + r.qBeg + ", " + r.qEnd + ", " + r.score + ", " + r.trueScore + ", ")
-        println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ") " + regs.length)
-        i += 1
-        } )
-*/
       regs = regs.sortBy(r => (- r.score, r.rBeg, r.qBeg))
       
       for(i <- 1 to (regs.length - 1))
         if(regs(i).score == regs(i-1).score && regs(i).rBeg == regs(i-1).rBeg && regs(i).qBeg == regs(i-1).qBeg)
           regs(i).qEnd = regs(i).qBeg
         
-      regs = regs.filter(r => (r.qEnd > r.qBeg))
-      regs
+      regs.filter(r => (r.qEnd > r.qBeg))
     }
   }
 }

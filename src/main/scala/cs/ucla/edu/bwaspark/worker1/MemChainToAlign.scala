@@ -13,15 +13,21 @@ import java.io.{FileReader, BufferedReader}
 object MemChainToAlign {
   val MAX_BAND_TRY = 2    
 
+  /**
+    *  Read class (testing use)
+    */
   class ReadChain(chains_i: MutableList[MemChainType], seq_i: Array[Byte]) {
     var chains: MutableList[MemChainType] = chains_i
     var seq: Array[Byte] = seq_i
   }
 
+  /**
+    *  Member variable of all reads (testing use)
+    */ 
   var testReadChains: MutableList[ReadChain] = new MutableList
   
   /**
-    *  Read the test chain data generated from bwa-0.7.8 (C version)
+    *  Read the test chain data generated from bwa-0.7.8 (C version) (testing use)
     *
     *  @param fileName the test data file name
     */
@@ -33,7 +39,6 @@ object MemChainToAlign {
     var chainPos: Long = 0
     var seeds: MutableList[MemSeedType] = new MutableList
     var seq: Array[Byte] = new Array[Byte](101)
-    //var seqLen: Int = 0
 
     while(line != null) {
       val lineFields = line.split(" ")      
@@ -41,8 +46,6 @@ object MemChainToAlign {
       // Find a sequence
       if(lineFields(0) == "Sequence") {
         chains = new MutableList
-        //seqLen = lineFields(1).toInt
-        //seq = new Array[Byte](seqLen)
         seq = lineFields(2).getBytes
         seq = seq.map(s => (s - 48).toByte) // ASCII => Byte(Int)
       }
@@ -75,7 +78,7 @@ object MemChainToAlign {
 
   /**
     *  Print all the chains (and seeds) from all input reads 
-    *  Only for debugging use
+    *  (Only for testing use)
     */
   def printAllReads() {
     def printChains(chains: MutableList[MemChainType]) {
@@ -93,26 +96,9 @@ object MemChainToAlign {
     testReadChains.foreach(r => printChains(r.chains))
   }
 
-
-  // calculate the maximum possible span of this alignment
-  private def calMaxGap(opt: MemOptType, qLen: Int): Int = {
-    val lenDel = ((qLen * opt.a - opt.oDel).toDouble / opt.eDel.toDouble + 1.0).toInt
-    val lenIns = ((qLen * opt.a - opt.oIns).toDouble / opt.eIns.toDouble + 1.0).toInt
-    var len = -1
-
-    if(lenDel > lenIns)
-      len = lenDel
-    else
-      len = lenIns
-
-    if(len <= 1) len = 1
-
-    val tmp = opt.w << 1
-
-    if(len < tmp) len
-    else tmp
-  }
-
+  /**
+    *  Data structure which keep both the length of a seed and its index in the original chain
+    */
   class SRTType(len_i: Int, index_i: Int) {
     var len: Int = len_i
     var index: Int = index_i
@@ -122,18 +108,18 @@ object MemChainToAlign {
     *  The main function of memChainToAlign class
     *
     *  @param opt the MemOptType object
-    *  @param pacLen the pac length
-    *  @param pac the pac array
+    *  @param pacLen the length of PAC array
+    *  @param pac the PAC array
     *  @param queryLen the query length (read length)
     *  @param chain one of the mem chains of the read
+    *  @param regs the input alignment registers, which are the registers from the output of the previous call on MemChainToAln().
+    *              This parameter is updated iteratively. The number of iterations is the number of chains of this read.
     */
-  //def memChainToAln(opt: MemOptType, pacLen: Long, pac: Array[Byte], queryLen: Int, chain: MemChainType): RDD[MemAlnRegType] = {
   def memChainToAln(opt: MemOptType, pacLen: Long, pac: Array[Byte], queryLen: Int, query: Array[Byte], 
     chain: MemChainType, regs: MutableList[MemAlnRegType]): MutableList[MemAlnRegType] = {
 
     var rmax: Array[Long] = new Array[Long](2)   
     var srt: Array[SRTType] = new Array[SRTType](chain.seeds.length) 
-    //var alnRegs: MutableList[MemAlnRegType] = new MutableList[MemAlnRegType]
     var alnRegs = regs
     var aw: Array[Int] = new Array[Int](2)
 
@@ -147,6 +133,7 @@ object MemChainToAlign {
     var rseq = ret._1
     val rlen = ret._2
     assert(rlen == rmax(1) - rmax(0))
+
     // debugging message
     //println(rlen)     
     //for(i <- 0 until rlen.toInt)
@@ -160,14 +147,11 @@ object MemChainToAlign {
     srt = srt.sortBy(s => s.len)
     //srt.map(s => println("(" + s.len + ", " + s.index + ")") )  // debugging message
 
-
     // The main for loop
     for(k <- (chain.seeds.length - 1) to 0 by -1) {
       val seed = chain.seeds( srt(k).index )
       var i = testExtension(opt, seed, alnRegs)
      
-      println("Test1: " + i + ", regs length: " + alnRegs.length)
-
       var checkoverlappingRet = -1
 
       if(i < alnRegs.length) checkoverlappingRet = checkOverlapping(k + 1, seed, chain, srt)
@@ -187,33 +171,27 @@ object MemChainToAlign {
         reg.trueScore = -1
      
         // left extension
-        //println("s.qbeg: " + seed.qBeg)
         if(seed.qBeg > 0) {
           val ret = leftExtension(opt, seed, rmax, query, rseq, reg) 
           reg = ret._1
           aw(0) = ret._2
-          //println("LEX qbeg: " + reg.qBeg + ", rbeg: " + reg.rBeg)
         }
         else {
           reg.score = seed.len * opt.a
           reg.trueScore = seed.len * opt.a
           reg.qBeg = 0
           reg.rBeg = seed.rBeg
-          //println("NLEX qbeg: " + reg.qBeg + ", rbeg: " + reg.rBeg)
         }
             
         // right extension
-        //println("s.qbeg: " + seed.qBeg + ", s.len: " + seed.len + ", queryLen: " + queryLen)
         if((seed.qBeg + seed.len) != queryLen) {
           val ret = rightExtension(opt, seed, rmax, query, queryLen, rseq, reg)
           reg = ret._1
           aw(1) = ret._2
-          //println("REX qend: " + reg.qEnd + ", rend: " + reg.rEnd)
         }
         else {
           reg.qEnd = queryLen
           reg.rEnd = seed.rBeg + seed.len
-          //println("NREX qend: " + reg.qEnd + ", rend: " + reg.rEnd)
         }
   
         reg.seedCov = computeSeedCoverage(chain, reg)
@@ -230,9 +208,42 @@ object MemChainToAlign {
     alnRegs
   }
 
-  // retrieve the reference sequence
-  // scala: l_pac, pac, rmax[0], rmax[1], return &rlen, return rseq
-  // c: l_pac, pac, beg, end, len, return rseq
+  /**
+    *  Calculate the maximum possible span of this alignment
+    *  This private function is used by memChainToAln()
+    *
+    *  @param opt the input MemOptType object
+    *  @param qLen the query length (the read length)
+    */
+  private def calMaxGap(opt: MemOptType, qLen: Int): Int = {
+    val lenDel = ((qLen * opt.a - opt.oDel).toDouble / opt.eDel.toDouble + 1.0).toInt
+    val lenIns = ((qLen * opt.a - opt.oIns).toDouble / opt.eIns.toDouble + 1.0).toInt
+    var len = -1
+
+    if(lenDel > lenIns)
+      len = lenDel
+    else
+      len = lenIns
+
+    if(len <= 1) len = 1
+
+    val tmp = opt.w << 1
+
+    if(len < tmp) len
+    else tmp
+  }
+
+  /**
+    *  Retrieve the reference sequence
+    *  This private function is used by memChainToAln()
+    *  scala: l_pac, pac, rmax[0], rmax[1], return &rlen, return rseq
+    *  c: l_pac, pac, beg, end, len, return rseq
+    *
+    *  @param pacLen the length of the PAC array
+    *  @param pac the PAC array
+    *  @param beg the reference begin
+    *  @param end the reference end
+    */
   private def bnsGetSeq(pacLen: Long, pac: Array[Byte], beg: Long, end: Long) : (Array[Byte], Long) = {
     var endVar: Long = 0//for swapping
     var begVar: Long = 0//for swapping 
@@ -270,17 +281,30 @@ object MemChainToAlign {
     else
       rLen = 0
 
-    (seq, rLen)//return two value
+    (seq, rLen)//return a Tuple
   }
-  //#define _get_pac(pac, l) ((pac)[(l)>>2]>>((~(l)&3)<<1)&3)
-  private def getPac( pac: Array[Byte], l: Long) : Long = {
+
+  /**
+    * Realize: #define _get_pac(pac, l) ((pac)[(l)>>2]>>((~(l)&3)<<1)&3)
+    * Used by bnsGetSeq()
+    *
+    * @param pac PAC array
+    * @param l 
+    */
+  private def getPac(pac: Array[Byte], l: Long) : Long = {
     var pacValue: Long = ( pac((l>>>2).toInt) >>> (((~l)&3) <<1) ) & 3
     pacValue
   }
  	
-
-
-  // get the max possible span
+  /** 
+    *  Get the max possible span
+    *  This private function is used by memChainToAln()
+    *
+    *  @param opt the input opt object
+    *  @param pacLen the length of PAC array
+    *  @param queryLen the length of the query (read)
+    *  @param chain the input chain
+    */
   private def getMaxSpan(opt: MemOptType, pacLen: Long, queryLen: Int, chain: MemChainType): Array[Long] = {
     var rmax: Array[Long] = new Array[Long](2)
     val doublePacLen = pacLen << 1
@@ -308,8 +332,14 @@ object MemChainToAlign {
     rmax
   }
    
-  // test whether extension has been made before
-  // NOTE: need to be tested!!!
+  /**
+    *  Test whether extension has been made before
+    *  This private function is used by memChainToAln()
+    *
+    *  @param opt the input opt object
+    *  @param seed the input seed
+    *  @param regs the current align registers
+    */
   private def testExtension(opt: MemOptType, seed: MemSeedType, regs: MutableList[MemAlnRegType]): Int = {
     var rDist: Long = -1 
     var qDist: Int = -1
@@ -365,7 +395,15 @@ object MemChainToAlign {
     breakIdx
   }
     
-  // check overlapping seeds in the same chain
+  /**
+    *  Further check overlapping seeds in the same chain
+    *  This private function is used by memChainToAln()
+    *
+    *  @param startIdx the index return by the previous testExtension() function
+    *  @param seed the current seed
+    *  @param chain the input chain
+    *  @param srt the srt array, which record the length and the original index on the chain
+    */ 
   private def checkOverlapping(startIdx: Int, seed: MemSeedType, chain: MemChainType, srt: Array[SRTType]): Int = {
     var breakIdx = chain.seeds.length
 
@@ -390,11 +428,20 @@ object MemChainToAlign {
       }
     }
 
-    println("Test2: " + breakIdx + ", Chain seed length: " + chain.seeds.length)
     breakIdx
   }
 
-  // left extension of the current seed
+  /**
+    *  Left extension of the current seed
+    *  This private function is used by memChainToAln()
+    *
+    *  @param opt the input MemOptType object
+    *  @param seed the current seed
+    *  @param rmax the calculated maximal range
+    *  @param query the query (read)
+    *  @param rseq the reference sequence
+    *  @param reg the current align register before doing left extension (the value is not complete yet)
+    */
   private def leftExtension(opt: MemOptType, seed: MemSeedType, rmax: Array[Long], query: Array[Byte], rseq: Array[Byte], reg: MemAlnRegType): (MemAlnRegType, Int) = {
     var aw = 0
     val tmp = (seed.rBeg - rmax(0)).toInt
@@ -444,7 +491,18 @@ object MemChainToAlign {
     (regResult, aw)
   }
 
-  // right extension of the current seed
+  /**
+    *  Right extension of the current seed
+    *  This private function is used by memChainToAln()
+    *
+    *  @param opt the input MemOptType object
+    *  @param seed the current seed
+    *  @param rmax the calculated maximal range
+    *  @param query the query (read)
+    *  @param queryLen the length of this query
+    *  @param rseq the reference sequence
+    *  @param reg the current align register before doing left extension (the value is not complete yet)
+    */
   private def rightExtension(opt: MemOptType, seed: MemSeedType, rmax: Array[Long], query: Array[Byte], queryLen: Int, rseq: Array[Byte], reg: MemAlnRegType): (MemAlnRegType, Int) = {
     var aw = 0
     var regResult = reg
@@ -498,7 +556,13 @@ object MemChainToAlign {
     (regResult, aw)
   }
     
-  // compute seed coverage
+  /** 
+    *  Compute the seed coverage
+    *  This private function is used by memChainToAln()
+    * 
+    *  @param chain the input chain
+    *  @param reg the current align register after left/right extension is done 
+    */
   private def computeSeedCoverage(chain: MemChainType, reg: MemAlnRegType): Int = {
     var seedcov = 0
     
@@ -513,12 +577,35 @@ object MemChainToAlign {
 
     seedcov
   }
- 
+
+  /**
+    *  EHType: use for Smith Waterman Extension
+    */ 
   class EHType(e_i: Int, h_i: Int) {
     var e: Int = e_i
     var h: Int = h_i
   }
 
+
+  /**
+    *  Smith-Waterman Extension
+    *  The key function in both left and right extension
+    *
+    *  @param qLen the query length
+    *  @param query the query (read)
+    *  @param tLen the target (reference) length retrieved
+    *  @param target the target (reference) retrieved
+    *  @param m the (mat) array size in one dimension 
+    *  @param mat the mat array
+    *  @param oDel oDel in the input MemOptType object
+    *  @param eDel eDel in the input MemOptType object
+    *  @param oIns oIns in the input MemOptType object
+    *  @param eIns eIns in the input MemOptType object
+    *  @param w_i the input weight
+    *  @param endBonus endBonus in the input MemOptType object
+    *  @param zdrop zdrop in the input MemOptType object
+    *  @param h0 initial S-W score
+    */  
   private def SWExtend(
     qLen: Int, query: Array[Byte], tLen: Int, target: Array[Byte], m: Int, mat: Array[Byte],
     oDel: Int, eDel: Int, oIns: Int, eIns: Int, w_i: Int, endBonus: Int, zdrop: Int, h0: Int): Array[Int] =  
@@ -547,11 +634,6 @@ object MemChainToAlign {
       }
     }
     
-    // debugging
-    //for(i <- 0 to (qLen*m - 1))
-      //print(qp(i) + " ")
-    //println
-
     // fill the first row
     eh(0).h = h0
     if(h0 > oeIns) eh(1).h = h0 - oeIns
@@ -561,11 +643,6 @@ object MemChainToAlign {
       eh(j).h = eh(j-1).h - eIns
       j += 1
     }
-
-    // debugging
-    //for(i <- 0 to qLen)
-      //print(eh(i).h + " ")
-    //println
 
     // adjust $w if it is too large
     k = m * m
@@ -588,9 +665,6 @@ object MemChainToAlign {
     var max_off = 0
     var beg = 0
     var end = qLen
-
-    // debugging
-    //println(max + " " + maxIns + " " + maxDel + " " + max_i + " " + max_j + " " + max_ie + " " + gscore + " " + max_off + " " + beg + " " + end)
 
     breakable {
       for(i <- 0 to (tLen - 1)) {
@@ -635,14 +709,8 @@ object MemChainToAlign {
           if(t < 0) t = 0
           f -= eIns
           if(f < t) f = t
-
-          // debugging
-          //println(t + " " + f + " " + h1 + " " + m + " " + mj)
         }
       
-        // debugging
-        //println("##########")
-
         eh(end).h = h1
         eh(end).e = 0
         // end == j after the previous loop
