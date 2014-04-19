@@ -3,6 +3,7 @@ package cs.ucla.edu.bwaspark.worker1
 import cs.ucla.edu.bwaspark.datatype._
 import scala.math._
 import scala.collection.mutable.MutableList
+import cs.ucla.edu.bwaspark.worker1.SAPos2RefPos._
 import java.util.TreeSet
 import java.util.Comparator
 
@@ -87,7 +88,10 @@ object MemChain {
     //go through each seed, either
     //1) merge it to existing chain
     //2) generate new chain from it
-    while ( (bwtIntvOnPoint = smemNext(smemItr, splitLen, opt.splitWidth, startWidth)) != null ) {
+
+    bwtIntvOnPoint = smemNext(smemItr, splitLen, opt.splitWidth, startWidth)
+
+    while ( bwtIntvOnPoint != null ) {
       //traverse all the seeds
       for (i <- 0 until bwtIntvOnPoint.length) {
 
@@ -105,7 +109,7 @@ object MemChain {
           for (j <- 0 until bwtIntvOnPoint(i).s.toInt) {
 
             //prepare for generating a new seed
-            var rBeg = suffixArrayPos2ReferencePos()
+            var rBeg = suffixArrayPos2ReferencePos(smemItr.bwt, bwtIntvOnPoint(i).k + j)
             var qBeg = bwtIntvOnPoint(i).startPoint
             var len = seedLen
 
@@ -202,6 +206,7 @@ object MemChain {
           }
         }
       }
+      bwtIntvOnPoint = smemNext(smemItr, splitLen, opt.splitWidth, startWidth)
     }
 
     //finally, return the tree
