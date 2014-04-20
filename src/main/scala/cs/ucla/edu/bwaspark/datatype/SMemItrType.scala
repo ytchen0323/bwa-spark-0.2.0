@@ -17,8 +17,8 @@ class SMemItrType(bwt_c: BWTType,
                   len_i: Int,
                   matches_c: MutableList[BWTIntvType],
                   sub_c: MutableList[BWTIntvType],
-                  tmpVec0_c: Array[BWTIntvType],
-                  tmpVec1_c: Array[BWTIntvType]) {
+                  tmpVec0_c: MutableList[BWTIntvType],
+                  tmpVec1_c: MutableList[BWTIntvType]) {
   var bwt = bwt_c
   var query = query_c
   var start = start_i
