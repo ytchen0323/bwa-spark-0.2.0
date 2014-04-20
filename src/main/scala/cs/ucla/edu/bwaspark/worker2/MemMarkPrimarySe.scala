@@ -38,7 +38,7 @@ object MemMarkPrimarySe {
 
       //ks_introsort(mem_ars_hash, n, a)
       //#define alnreg_hlt(a, b) ((a).score > (b).score || ((a).score == (b).score && (a).hash < (b).hash))
-      aVar = a.sortWith( (x, y) => ((x.score > y.score) || ( x.score == y.score && x.hash < y.hash)  ) )
+      aVar = a.sortWith( (x, y) => ((x.score > y.score) || ( x.score == y.score && (x.hash >>> 1) < (y.hash >>> 1) )  ) )
       tmp = opt.a + opt.b
       if((opt.oDel + opt.eDel) > tmp) {
 	tmp = opt.oDel + opt.eDel
@@ -49,6 +49,7 @@ object MemMarkPrimarySe {
       //kv_push()
       z += 0
       for(i <- 1 until n) {
+        var breakIdx: Int = z.size
 	breakable {
 	  for(k <- 0 until z.size) {
 	    j = z(k)
@@ -59,14 +60,21 @@ object MemMarkPrimarySe {
 	      var minL: Int = if ((aVar(i).qEnd - aVar(i).qBeg)<(aVar(j).qEnd - aVar(j).qBeg)) (aVar(i).qEnd - aVar(i).qBeg) else (aVar(j).qEnd - aVar(j).qBeg)
 	      //have significant overlap
 	      if((eMin - bMax)>= minL * opt.maskLevel) {
-		if(aVar(j).sub == 0) aVar(j).sub = aVar(i).score
+		if(aVar(j).sub == 0) {
+		  aVar(j).sub = aVar(i).score
+		  println("#######should come here")
+		}
 		if((aVar(j).score - aVar(i).score) <= tmp) aVar(j).subNum = aVar(j).subNum + 1
+		breakIdx = k
 		break
+
 	      }
 	    }
 	  }
-	  if(k == z.size) z += i
-	  else aVar(i).secondary = z(k)
+	}
+	if(breakIdx == z.size ) z += i
+	else {
+	  aVar(i).secondary = z(k)
 	}
       }
     }
