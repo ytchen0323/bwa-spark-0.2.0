@@ -1,4 +1,4 @@
-package cs.ucla.edu.bwaspark.worker1
+package cs.ucla.edu.bwaspark.worker2
 
 import scala.util.control.Breaks._
 import scala.List
@@ -16,7 +16,7 @@ object MemRegToADAMSAM {
     *  Transform the alignment registers to SAM format
     *  
     *  @param opt the input MemOptType object
-    *  @param bns the input BNSSeqType object
+    *  @param bns the input BNTSeqType object
     *  @param pac the PAC array
     *  @param seq the read (NOTE: currently we use Array[Byte] first. may need to be changed!!!)
     *  @param regs the alignment registers to be transformed
@@ -26,13 +26,27 @@ object MemRegToADAMSAM {
   def memRegToSAMSe(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], seq: Array[Byte], regs: MutableList[MemAlnRegType], extraFlag: Int, alnsIn: MutableList[MemAlnType]) {
     var alns: MutableList[MemAlnType] = new MutableList[MemAlnType]
 
+    // NOTE: set opt.flag manually here!!! This should be modified from the logger!!!
+    opt.flag = 24
+/*   
+    println("[opt object] flag: " + opt.flag + " T: " + opt.T + " minSeedLen: " + opt.minSeedLen + " a: " + opt.a + " b: " + opt.b + " mapQCoefLen: " + opt.mapQCoefLen + " mapQCoefFac: " + opt.mapQCoefFac)
+
+    var j = 0
+    regs.foreach(r => {
+      print("Reg " + j + "(")
+      print(r.rBeg + ", " + r.rEnd + ", " + r.qBeg + ", " + r.qEnd + ", " + r.score + ", " + r.trueScore + ", ")
+      println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ")")
+      j += 1
+      } )
+*/
     for(i <- 0 to (regs.length - 1)) {
       if(regs(i).score >= opt.T) {
         if(regs(i).secondary < 0 || ((opt.flag & MEM_F_ALL) > 0)) {
           if(regs(i).secondary < 0 || regs(i).score >= regs(regs(i).secondary).score * 0.5) {
+            // debugging
+            print("i=" + i + " ")
             var aln = memRegToAln(opt, bns, pac, 101, seq, regs(i))   // NOTE: current data structure has not been obtained from RDD. We assume the length to be 101 here
             alns += aln
-
             aln.flag |= extraFlag   // flag secondary
             if(regs(i).secondary >= 0) aln.sub = -1   // don't output sub-optimal score
             if(i > 0 && regs(i).secondary < 0)   // if supplementary
@@ -61,7 +75,7 @@ object MemRegToADAMSAM {
     *  Transform the alignment registers to alignment type
     *
     *  @param opt the input MemOptType object
-    *  @param bns the input BNSSeqType object
+    *  @param bns the input BNTSeqType object
     *  @param pac the PAC array
     *  @param seqLen the length of the input sequence
     *  @param seq the input sequence
@@ -69,10 +83,17 @@ object MemRegToADAMSAM {
     */
   private def memRegToAln(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], seqLen: Int, seq: Array[Byte], reg: MemAlnRegType): MemAlnType = {
     val aln = new MemAlnType
+    if(reg != null)
+      println(memApproxMapqSe(opt, reg))
     aln
   }
 
-
+  /**
+    *  Calculate the approximate mapq value
+    *
+    *  @param opt the input MemOptType object
+    *  @param reg the input alignment register
+    */
   private def memApproxMapqSe(opt: MemOptType, reg: MemAlnRegType): Int = {
     var sub = 0
     
@@ -89,7 +110,7 @@ object MemRegToADAMSAM {
       if(reg.qEnd - reg.qBeg > reg.rEnd - reg.rBeg) len = reg.qEnd - reg.qBeg
       else len = (reg.rEnd - reg.rBeg).toInt
       
-      val identity = 1.0 - (len * opt.a - reg.score) / (opt.a + opt.b) / len
+      val identity = 1.0 - (len * opt.a - reg.score).toDouble / (opt.a + opt.b) / len
       if(reg.score == 0) mapq = 0
       else if(opt.mapQCoefLen > 0) {
         var tmp: Double = 1.0

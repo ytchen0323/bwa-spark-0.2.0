@@ -13,14 +13,14 @@ object MemMarkPrimarySe {
   
   /**
    * The main function of memMarkPrimarySe class
-
+   *
    * @param opt the MemOptType object
-   * @param n the Int object
    * @param a the MemAlnRegType object
    * @param id the Long object
    */
   //??opt a list or a object??
-  def memMarkPrimarySe(opt: MemOptType, n: Int, a: MutableList[MemAlnRegType], id: Long) : MutableList[MemAlnRegType] = {
+  def memMarkPrimarySe(opt: MemOptType, a: MutableList[MemAlnRegType], id: Long) : MutableList[MemAlnRegType] = {
+    val n: Int = a.length
     var i: Int = 0
     var j: Int = 0
     var tmp: Int = 0
@@ -38,7 +38,8 @@ object MemMarkPrimarySe {
 
       //ks_introsort(mem_ars_hash, n, a)
       //#define alnreg_hlt(a, b) ((a).score > (b).score || ((a).score == (b).score && (a).hash < (b).hash))
-      aVar = a.sortWith( (x, y) => ((x.score > y.score) || ( x.score == y.score && (x.hash >>> 1) < (y.hash >>> 1) )  ) )
+      //aVar = a.sortWith( (x, y) => ((x.score > y.score) || ( x.score == y.score && (x.hash >>> 1) < (y.hash >>> 1) )  ) )
+      aVar = a.sortBy(r => (- r.score, r.hash))
       tmp = opt.a + opt.b
       if((opt.oDel + opt.eDel) > tmp) {
 	tmp = opt.oDel + opt.eDel
