@@ -33,7 +33,7 @@ object MemMarkPrimarySe {
 	a(i).sub = 0
 	a(i).secondary = -1
 	a(i).hash = hash64((id + i.toLong))
-	println("i and hash value is "+ i + " "+ a(i).hash)
+	//println("i and hash value is "+ i + " "+ a(i).hash)
       }
 
       //ks_introsort(mem_ars_hash, n, a)
@@ -62,7 +62,7 @@ object MemMarkPrimarySe {
 	      if((eMin - bMax)>= minL * opt.maskLevel) {
 		if(aVar(j).sub == 0) {
 		  aVar(j).sub = aVar(i).score
-		  println("#######should come here")
+		  //println("#######should come here")
 		}
 		if((aVar(j).score - aVar(i).score) <= tmp) aVar(j).subNum = aVar(j).subNum + 1
 		breakIdx = k
