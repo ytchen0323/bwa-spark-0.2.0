@@ -5,6 +5,8 @@ import scala.util.control.Breaks._
 import scala.collection.mutable.MutableList
 //import org.scalatest.Assertions._
 
+import java.io.{FileReader, BufferedReader}
+
 class BWTSMem {
 
   //constant value in the orignal algo
@@ -15,6 +17,12 @@ class BWTSMem {
   //parameter/local variable in the original bwt_smem1
   var m_ik : BWTIntvType = _
   var m_ok : Array[BWTIntvType] = new Array[BWTIntvType](4)
+  //m_ok.foreach(_ => new BWTIntvType(0, 0, 0, 0, 0))
+  m_ok(0) = new BWTIntvType(0, 0, 0, 0, 0)
+  m_ok(1) = new BWTIntvType(0, 0, 0, 0, 0)
+  m_ok(2) = new BWTIntvType(0, 0, 0, 0, 0)
+  m_ok(3) = new BWTIntvType(0, 0, 0, 0, 0)
+  m_ok.foreach(s => println("s.l = " + s.l))
   var mBWT : BWTType = _
 
   //local variable in the original bwt_extend
@@ -113,9 +121,13 @@ class BWTSMem {
   }
 
   def bwtExtend(is_back: Boolean) {
+    println("[DEBUG] In bwtExtend, is_back = " + is_back)
     var cond : Boolean = false
     if (is_back) {
+      println("[DEBUG] Performing backword extension.")
+      println("[DEBUG] Enter bwt_2occ4.")
       bwt_2occ4(m_ik.k - 1, m_ik.k - 1 + m_ik.s)
+      println("[DEBUG] Back from bwt_2occ4.")
       for (i <- 0 to 3) {
 	m_ok(i).k = mBWT.L2(i) + 1 + m_tk(i)
 	m_ok(i).s = m_tl(i) - m_tk(i)
@@ -128,9 +140,17 @@ class BWTSMem {
       m_ok(0).l = m_ok(1).l + m_ok(1).s
     }
     else {
+      println("[DEBUG] Performing forword extension.")
+      println("[DEBUG] Enter bwt_2occ4.")
       bwt_2occ4(m_ik.l - 1, m_ik.l - 1 + m_ik.s)
+      println("[DEBUG] Back from bwt_2occ4.")
       for (i <- 0 to 3) {
-	m_ok(i).l = mBWT.L2(i) + 1 + m_tk(i)
+	println(mBWT.L2(i))
+	println(m_tk(i))
+	var xxx = (mBWT.L2(i) + 1 + m_tk(i))
+	println("add " + xxx)
+	println(m_ok(i).l)
+	m_ok(i).l = (mBWT.L2(i) + 1 + m_tk(i))
 	m_ok(i).s = m_tl(i) - m_tk(i)
       }
       cond = ((m_ik.l <= mBWT.primary) && (m_ik.l + m_ik.s - 1 >= mBWT.primary))
@@ -162,10 +182,15 @@ class BWTSMem {
     //var ok : Array[BWTIntvType] = new Array[BWTIntvType](4)
     var c : Int = 0
 
+    println("[DEBUG] Begin forward search...")
+    println("[DEBUG] len = " + len + ", length of q = " + q.length)
+
     breakable { for (i <- x + 1 to len - 1) { //forward search
       if (q(i) < 4) {	//an A/C/G/T base
 	c = 3 - q(i)
+	println("[DEBUG] Enter forward extension.")
 	bwtExtend(false) //bwt_forward_extend
+	println("[DEBUG] Back from forward extension.")
 	if (m_ok(c).s != m_ik.s) {
 	  curr.+=:(m_ik)
 	  if (m_ok(c).s < min_intv) break
@@ -178,11 +203,15 @@ class BWTSMem {
 	break
       }
     } }
+
+    println("[DEBUG] Forward search ends.")
     
     var ret : Int = curr(0).endPoint
     swap = curr
     curr = prev
     prev = swap
+
+    println("[DEBUG] Begin backward search...")
 
     breakable { for (i <- x - 1 to -1) { //backward extension
       if (i < 0)
@@ -214,6 +243,39 @@ class BWTSMem {
       prev = swap
     } }
 
+    println("[DEBUG] Backward search ends.")
+
+    println("[DEBUG] Results: ");
+    println("[DEBUG] Updated start: " + ret)
+    mem.foreach(s => println(s.startPoint + " " + s.endPoint + " " + s.k + " " + s.l + " " + s.s))
+
     ret
+  }
+
+  //below are for testing purpose
+  var test_len : Int = 0
+  var test_q : Array[Byte] = _
+  var test_x : Int = 0
+  var test_min_intv = 0
+
+  def readTestData(fileName: String) {
+    val reader = new BufferedReader(new FileReader(fileName))
+    
+    var line = reader.readLine
+    test_len = line.toInt
+    println(test_len)
+
+    line = reader.readLine
+    println(line)
+    test_q = line.getBytes
+    test_q = test_q.map(s => (s - 48).toByte)
+
+    line = reader.readLine
+    test_x = line.toInt
+    println(test_x)
+
+    line = reader.readLine
+    test_min_intv = line.toInt
+    println(test_min_intv)
   }
 }
