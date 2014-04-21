@@ -3,6 +3,7 @@ package cs.ucla.edu.bwaspark.worker1
 import cs.ucla.edu.bwaspark.datatype._
 import scala.collection.mutable.MutableList
 import scala.math._
+import cs.ucla.edu.bwaspark.debug.DebugFlag._
 
 //define a chain wrapper for sorting and filtering
 //one wrapper will maintain two chains,
@@ -76,6 +77,14 @@ object MemChainFilter {
   //define filtering function
   //generate new chain array
   def memChainFilter(opt: MemOptType, chains: Array[MemChainType]): Array[MemChainType] = {
+
+    
+    if (debugLevel > 0) {
+      println("Perform function memChainFilter")
+      println("Chains before filtering:")
+      println("#chains: " + chains.length)
+      chains.map(ele => ele.print())
+    }
     
     //if there is less than one chain in chain array
     //we do not need to filter it at all
@@ -96,6 +105,13 @@ object MemChainFilter {
       }
       //sort by weight decreasingly
       chainWrapperArray = chainWrapperArray.sortWith( (a, b) => a.weight > b.weight )
+    
+      if (debugLevel > 0) {
+        println("The first step: sorting by weight")
+        println("#chains: " + chainWrapperArray.length)
+        chainWrapperArray.map(ele => ele.mainChain.print())
+      }
+    
 
       //second step: filtering
       var wrappersAfterFilter = new MutableList[MemChainWrapperType]()
@@ -143,7 +159,14 @@ object MemChainFilter {
       for (i <- 0 until newChainArray.length) {
         newChainArray(i) = wrappersAfterFilter(i).mainChain
       }
-      
+    
+      if (debugLevel > 0) {
+        println("Chains after filtering:")
+        println("#chains: " + newChainArray.length)
+        newChainArray.map(ele => ele.print())
+        println("End function memChainFilter")
+      }
+    
       //return newChainArray
       newChainArray
     }
