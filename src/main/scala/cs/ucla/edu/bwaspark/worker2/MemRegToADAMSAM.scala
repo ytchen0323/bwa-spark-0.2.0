@@ -6,6 +6,7 @@ import scala.collection.mutable.MutableList
 import scala.math.log
 
 import cs.ucla.edu.bwaspark.datatype._
+import cs.ucla.edu.bwaspark.util.BNTSeqUtil._
 
 object MemRegToADAMSAM {
   val MEM_F_ALL = 0x8
@@ -18,7 +19,7 @@ object MemRegToADAMSAM {
     *  @param opt the input MemOptType object
     *  @param bns the input BNTSeqType object
     *  @param pac the PAC array
-    *  @param seq the read (NOTE: currently we use Array[Byte] first. may need to be changed!!!)
+    *  @param seq the read (NOTE: currently we use Array[Byte] first. may need to be changed back to Array[Char]!!!)
     *  @param regs the alignment registers to be transformed
     *  @param extraFlag
     *  @param alns 
@@ -78,13 +79,15 @@ object MemRegToADAMSAM {
     *  @param bns the input BNTSeqType object
     *  @param pac the PAC array
     *  @param seqLen the length of the input sequence
-    *  @param seq the input sequence
+    *  @param seq the input sequence (NOTE: currently we use Array[Byte] first. may need to be changed back to Array[Char]!!!)
     *  @param reg the input alignment register
     */
   private def memRegToAln(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], seqLen: Int, seq: Array[Byte], reg: MemAlnRegType): MemAlnType = {
     val aln = new MemAlnType
-    if(reg != null)
+    if(reg != null) {
       println(memApproxMapqSe(opt, reg))
+      bwaFixXref2(opt.mat, opt.oDel, opt.eDel, opt.oIns, opt.eIns, opt.w, bns, pac, seq, reg.qBeg, reg.qEnd, reg.rBeg, reg.rEnd)
+    }
     aln
   }
 
@@ -131,5 +134,20 @@ object MemRegToADAMSAM {
     }
 
   }  
+
+
+  private def bwaFixXref2(mat: Array[Byte], oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, bns: BNTSeqType, 
+    pac: Array[Byte], query: Array[Byte], qBeg: Int, qEnd: Int, rBeg: Long, rEnd: Long): Array[Int] = {
+    var retArray = new Array[Int](5)
+    bwaGenCigar2(mat, oDel, eDel, oIns, eIns, w, bns.l_pac, pac, qEnd - qBeg, query, rBeg, rEnd)
+    retArray
+  }
+
+  private def bwaGenCigar2(mat: Array[Byte], oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, pacLen: Long, pac: Array[Byte], 
+    queryLen: Int, query: Array[Byte], rb: Long, re: Long): (Int, Int, Int, Array[Int]) = {
+    var cigar: Array[Int] = new Array[Int](10)    
+
+    (0, 0, 0, cigar)
+  }
 }
 
