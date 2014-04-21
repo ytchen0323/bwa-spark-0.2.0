@@ -142,24 +142,24 @@ class BWTSMem {
     else {
       println("[DEBUG] Performing forword extension.")
       println("[DEBUG] Enter bwt_2occ4.")
+      println("[DEBUG] m_ik.s = " + m_ik.s)
       bwt_2occ4(m_ik.l - 1, m_ik.l - 1 + m_ik.s)
       println("[DEBUG] Back from bwt_2occ4.")
+      println("[DEBUG] m_ik.s = " + m_ik.s)
       for (i <- 0 to 3) {
-	println(mBWT.L2(i))
-	println(m_tk(i))
-	var xxx = (mBWT.L2(i) + 1 + m_tk(i))
-	println("add " + xxx)
-	println(m_ok(i).l)
 	m_ok(i).l = (mBWT.L2(i) + 1 + m_tk(i))
 	m_ok(i).s = m_tl(i) - m_tk(i)
+        println("[DEBUG] bp1: m_ok(" + i + ").s = " + m_ok(i).s + ", m_ik.s = " + m_ik.s)
       }
       cond = ((m_ik.l <= mBWT.primary) && (m_ik.l + m_ik.s - 1 >= mBWT.primary))
+      println("[DEBUG] bp2: m_ik.s = " + m_ik.s)
       m_ok(3).k = m_ik.k
       if (cond) m_ok(3).k += 1
       m_ok(2).k = m_ok(3).k + m_ok(3).s
       m_ok(1).k = m_ok(2).k + m_ok(2).s
       m_ok(0).k = m_ok(1).k + m_ok(1).s
     }
+    println("[DEBUG] At the end of bwtExtend: m_ik.s = " + m_ik.s)
   }
 
   //len: q's length
@@ -179,30 +179,41 @@ class BWTSMem {
     mBWT = bwt
     // start pos for ik = 0?
     m_ik = new BWTIntvType(0, x + 1, bwt.L2(q(x)) + 1, bwt.L2(3 - q(x)) + 1, bwt.L2(q(x) + 1) - bwt.L2(q(x)))
+    println("[DEBUG] Initial interval: " + m_ik.startPoint + " " + m_ik.endPoint + " " + m_ik.k + " " + m_ik.l + " " + m_ik.s)
     //var ok : Array[BWTIntvType] = new Array[BWTIntvType](4)
     var c : Int = 0
+    var breaked : Boolean = false
 
     println("[DEBUG] Begin forward search...")
-    println("[DEBUG] len = " + len + ", length of q = " + q.length)
+    println("[DEBUG] len = " + len + ", length of q = " + q.length + ", min_intv = " + min_intv)
 
     breakable { for (i <- x + 1 to len - 1) { //forward search
+      println("[DEBUG] i = " + i + " ,q[i] = " + q(i))
       if (q(i) < 4) {	//an A/C/G/T base
 	c = 3 - q(i)
-	println("[DEBUG] Enter forward extension.")
+	println("[DEBUG] Before forward extension: m_ik.s = " + m_ik.s)
 	bwtExtend(false) //bwt_forward_extend
-	println("[DEBUG] Back from forward extension.")
+	println("[DEBUG] After forward extension: m_ok(" + c + ").s = " + m_ok(c).s + ", m_ik.s = " + m_ik.s)
 	if (m_ok(c).s != m_ik.s) {
 	  curr.+=:(m_ik)
-	  if (m_ok(c).s < min_intv) break
+	  if (m_ok(c).s < min_intv) {
+	    println("[DEBUG] breaking!!!")
+	    breaked = true
+	    break
+	  }
 	}
-	m_ik = m_ok(c)
+	m_ik.copy(m_ok(c))
 	m_ik.endPoint = i + 1
+	println("[DEBUG] curr(0).s = " + curr(0).s + ", m_ik.s = " + m_ik.s)
       }
       else {
 	curr.+=:(m_ik) //prepend the item to the list -- no need to reverse later
+	breaked = true
 	break
       }
     } }
+
+    if (breaked == false) curr.+=:(m_ik)
 
     println("[DEBUG] Forward search ends.")
     
