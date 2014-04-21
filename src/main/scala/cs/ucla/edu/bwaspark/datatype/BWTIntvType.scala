@@ -14,4 +14,9 @@ class BWTIntvType(startPoint_l: Int, //uint32_t
   var k = k_l
   var l = l_l
   var s = s_l
+
+  def print() {
+    println ("start " + startPoint + ", end " + endPoint + ", (k, l, s) (" + k + ", " + l + ", " + s + ").")
+  }
+
 }
