@@ -11,6 +11,7 @@ import scala.collection.mutable.MutableList
 import cs.ucla.edu.bwaspark.datatype._
 import cs.ucla.edu.bwaspark.worker1.MemChainToAlign._
 import cs.ucla.edu.bwaspark.worker1.MemSortAndDedup._
+import cs.ucla.edu.bwaspark.worker2.BWAMemWorker2._
 
 object BWAMEMSpark {
    def main(args: Array[String]) {
@@ -49,6 +50,7 @@ object BWAMEMSpark {
 
       //testReadChains.foreach( read => read.chains.map( chain => memChainToAln(opt, idx.bns.l_pac, idx.pac, 101, read.seq, chain) ) )
 
+      var readNum = 0
 
       testReadChains.foreach( read => {
         var regs = new MutableList[MemAlnRegType]
@@ -57,16 +59,20 @@ object BWAMEMSpark {
           regs = memChainToAln(opt, idx.bns.l_pac, idx.pac, 101, read.seq, read.chains(i), regs)
        
         regs = memSortAndDedup(regs, opt.maskLevelRedun)
- 
+/* 
         // print all regs for a single read
         var i = 0
         regs.foreach(r => {
           print("Reg " + i + "(")
           print(r.rBeg + ", " + r.rEnd + ", " + r.qBeg + ", " + r.qEnd + ", " + r.score + ", " + r.trueScore + ", ")
-          println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ") " + regs.length)
+          println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ")")
           i += 1
           } )
-
+*/
+        println("Read=" + readNum)
+        bwaMemWorker2(opt, regs, idx.bns, idx.pac, read.seq, 0)
+        println
+        readNum += 1
 
         } )
 

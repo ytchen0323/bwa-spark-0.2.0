@@ -19,8 +19,18 @@ object MemSortAndDedup {
       regsIn
     } 
     else {
+      //println("before dedup, n: " + regsIn.length)
       var regs = regsIn.sortBy(_.rEnd)
-      
+/*
+      var j = 0
+      regs.foreach(r => {
+        print("Reg " + j + "(")
+        print(r.rBeg + ", " + r.rEnd + ", " + r.qBeg + ", " + r.qEnd + ", " + r.score + ", " + r.trueScore + ", ")
+        println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ")")
+        j += 1
+        } )
+      println("####################################################")
+*/      
       for(i <- 1 to (regs.length - 1)) {
         if(regs(i).rBeg < regs(i-1).rEnd) {
           var j = i - 1
@@ -43,13 +53,17 @@ object MemSortAndDedup {
                 if(regs(j).qEnd - regs(j).qBeg < regs(i).qEnd - regs(i).qBeg) mq = regs(j).qEnd - regs(j).qBeg
                 else mq = regs(i).qEnd - regs(i).qBeg
                 // one of the hits is redundant
-                if(or.toFloat > maskLevelRedun * mr && oq.toFloat > maskLevelRedun * mq) {
+                //if(or.toFloat > maskLevelRedun * mr && oq.toFloat > maskLevelRedun * mq) {
+                if(or > maskLevelRedun * mr && oq > maskLevelRedun * mq) {
                   if(regs(i).score < regs(j).score) {
                     regs(i).qEnd = regs(i).qBeg
+                    println(i + " " + or + " " + oq)
                     break
                   }
-                  else
+                  else {
                     regs(j).qEnd = regs(j).qBeg
+                    println(j + " " + or + " " + oq)
+                  }
                 }
               }             
  
@@ -63,12 +77,15 @@ object MemSortAndDedup {
       // exclude identical hits
       regs = regs.filter(r => (r.qEnd > r.qBeg))
       regs = regs.sortBy(r => (- r.score, r.rBeg, r.qBeg))
+      //println("1st dedup, n: " + regs.length)
       
       for(i <- 1 to (regs.length - 1))
         if(regs(i).score == regs(i-1).score && regs(i).rBeg == regs(i-1).rBeg && regs(i).qBeg == regs(i-1).qBeg)
           regs(i).qEnd = regs(i).qBeg
         
-      regs.filter(r => (r.qEnd > r.qBeg))
+      regs = regs.filter(r => (r.qEnd > r.qBeg))
+      //println("2nd dedup, n: " + regs.length)
+      regs
     }
   }
 }
