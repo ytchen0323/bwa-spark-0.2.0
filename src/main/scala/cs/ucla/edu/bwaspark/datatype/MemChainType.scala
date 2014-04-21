@@ -11,4 +11,10 @@ class MemSeedType(rbeg_i: Long, qbeg_i: Int, len_i: Int) {
 class MemChainType(pos_i: Long, seeds_i: MutableList[MemSeedType]) {
   var pos: Long = pos_i
   var seeds: MutableList[MemSeedType] = seeds_i
+
+  def print() {
+    println("The reference position of the chain: " + pos)
+    seeds.map (ele => println("Ref Begin: " + ele.rBeg + ", Query Begin: " + ele.qBeg + ", Length: " + ele.len))
+  }
+
 }
