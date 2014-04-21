@@ -10,6 +10,7 @@ object DebugFlag {
   //1: all debug information
 
   var debugLevel: Int = _
+  var debugBWTSMem : Boolean = false
 
 
 }
