@@ -93,14 +93,15 @@ object MemChain {
 
           //merge itr.matches and itr.sub and sort by start point (end point if start point equals)
           itr.matches = (itr.matches.++(itr.sub)).sortWith((a, b) => (if (a.startPoint < b.startPoint) true else if (a.startPoint > b.startPoint) false else a.endPoint < b.endPoint))
-          if (debugLevel > 0) {
-            println("The final result of bwtSMem1 for one iteration")
-            itr.matches.map(ele => ele.print())
-          }
         }
-
         var res = new MutableList[BWTIntvType]
         res = res.++(itr.matches)
+
+        if (debugLevel > 0) {
+          println("The final result of bwtSMem1 for one iteration")
+          res.map(ele => ele.print())
+        }
+
         res
       }
     }
@@ -306,10 +307,10 @@ object MemChain {
                                     seq, 
                                     0, //the first startpoint for smemNext is 0
                                     len,
-                                    null, //matches array
-                                    null, //sub array
-                                    null, //temporary array 0
-                                    null) //temporary array 1
+                                    new MutableList[BWTIntvType](), //matches array
+                                    new MutableList[BWTIntvType](), //sub array
+                                    new MutableList[BWTIntvType](), //temporary array 0
+                                    new MutableList[BWTIntvType]()) //temporary array 1
 
       //generate a tree for all chains
       if (debugLevel > 0) {
