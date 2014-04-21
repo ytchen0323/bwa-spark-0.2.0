@@ -6,6 +6,7 @@ import scala.collection.mutable.MutableList
 import cs.ucla.edu.bwaspark.worker1.SAPos2RefPos._
 import java.util.TreeSet
 import java.util.Comparator
+import cs.ucla.edu.bwaspark.debug.DebugFlag._
 
 //standalone object for generating all MEM chains for each read
 object MemChain {
@@ -13,6 +14,11 @@ object MemChain {
   //get the next start point for forward and backward extension
 
   def smemNext(itr: SMemItrType, splitLen: Int, splitWidth: Int, startWidth: Int): MutableList[BWTIntvType] = {
+    
+    if (debugLevel > 0) {
+      println("Perform function smemNext")
+    }
+
     //if the start point has exceeded the length
     //or it has gone back to negative number
     //return null 
@@ -25,6 +31,9 @@ object MemChain {
       if (itr.start == itr.len) null
 
       else {
+        if (debugLevel > 0) {
+          println("smemNext: non-trivial execution")
+        }
         //skipping all the N bases, the point is actually the real start point
         var oriStart = itr.start
 
@@ -33,7 +42,20 @@ object MemChain {
         //create a BWTSMem object to call the function
         val smemObj = new BWTSMem
 
+        if (debugLevel > 0) {
+          println("smemNext: carry out function bwtSMem1")
+        }
+
         itr.start = smemObj.bwtSMem1(itr.bwt, itr.len, itr.query, oriStart, startWidth, itr.matches, itr.tmpVec0, itr.tmpVec1)
+
+        if (debugLevel > 0) {
+          println ("The original run of bwtSMem1")
+          itr.matches.map(ele => ele.print())
+        }
+
+        if (debugLevel > 0) {
+          println("smemNext: the first run of function bwtSMem1 done")
+        }
 
         assert (itr.matches.length > 0) //in theory, there is at least one match
 
@@ -42,11 +64,26 @@ object MemChain {
         var maxLength = maxBWTIntv.endPoint - maxBWTIntv.startPoint
         var middlePointOfMax = (maxBWTIntv.endPoint + maxBWTIntv.startPoint) / 2
 
+        if (debugLevel > 0) {
+          print("Max BWT Interval: ")
+          maxBWTIntv.print()
+          println ("Max length: " + maxLength)
+          println ("Middle point is " + middlePointOfMax)
+        }
+
         //if the longest SMEM is unique and long
         if (splitLen > 0 && splitLen <= maxLength && maxBWTIntv.s <= splitWidth) {
+          if (debugLevel > 0) {
+            print("The max BWT is unique and long: ")
+            maxBWTIntv.print()
+          }
 
           //re-do the seeding process starting from the middle of the longest MEM
           val tmp = smemObj.bwtSMem1(itr.bwt, itr.len, itr.query, middlePointOfMax, (maxBWTIntv.s + 1).toInt, itr.sub, itr.tmpVec0, itr.tmpVec1)
+          if (debugLevel > 0) {
+            println("The reseeding run of bwtSMem1")
+            itr.sub.map(ele => ele.print())
+          }
 
           //only some seeds in the sub array can still be there
           //1)length of the seed should be no less than maxLength/2
@@ -56,6 +93,10 @@ object MemChain {
 
           //merge itr.matches and itr.sub and sort by start point (end point if start point equals)
           itr.matches = (itr.matches.++(itr.sub)).sortWith((a, b) => (if (a.startPoint < b.startPoint) true else if (a.startPoint > b.startPoint) false else a.endPoint < b.endPoint))
+          if (debugLevel > 0) {
+            println("The final result of bwtSMem1 for one iteration")
+            itr.matches.map(ele => ele.print())
+          }
         }
 
         var res = new MutableList[BWTIntvType]
@@ -68,6 +109,10 @@ object MemChain {
   //generate a chain tree for each read
 
   def generateChainTree(opt: MemOptType, l_pac: Long, smemItr: SMemItrType): TreeSet[MemChainType] = {
+
+    if (debugLevel > 0) {
+      println("Perform function generateChainTree")
+    }
 
     //calculate splitLen
     val splitLen = min((opt.minSeedLen * opt.splitFactor + 0.499).toInt, smemItr.len)
@@ -89,7 +134,15 @@ object MemChain {
     //1) merge it to existing chain
     //2) generate new chain from it
 
+    if (debugLevel > 0) {
+      println("generateChainTree: carry out the main while loop with start width " + startWidth + ", split length " + splitLen + ", and split width " + opt.splitWidth)
+    }
+
     bwtIntvOnPoint = smemNext(smemItr, splitLen, opt.splitWidth, startWidth)
+    
+    if (debugLevel > 0) {
+      println("generateChainTree: finish the 1st smemNext")
+    }
 
     while ( bwtIntvOnPoint != null ) {
       //traverse all the seeds
@@ -210,6 +263,11 @@ object MemChain {
     }
 
     //finally, return the tree
+
+    if (debugLevel > 0) {
+      println("End function generateChainTree")
+    }
+
     chainTree
 
   }
@@ -229,8 +287,16 @@ object MemChain {
   //generate chains for each read
   def generateChains(opt: MemOptType, bwt: BWTType, l_pac: Long, len: Int, seq: Array[Byte]): Array[MemChainType] = {
     
+    if (debugLevel > 0) {
+      println("Perform function generateChains")
+    }
+
     //if the query is shorter than the seed length, no match, return null
     if (len < opt.minSeedLen) {
+      if (debugLevel > 0) {
+        println("Warning: the length of read is too short")
+        println("End function generateChains")
+      }
       null
     }
     //the else part the real meaty part for this function
@@ -246,10 +312,26 @@ object MemChain {
                                     null) //temporary array 1
 
       //generate a tree for all chains
+      if (debugLevel > 0) {
+        println("generateChains 1st: generate a tree of chains (start)")
+      }
       val chainTree = generateChainTree(opt, l_pac, smemItr)
+      if (debugLevel > 0) {
+        println("generateChains 1st: generate a tree of chains (end)")
+      }
 
       //return value, the chains to be generated for a read
+      if (debugLevel > 0) {
+        println("generateChains 2nd: transform the chain tree into a chain array (start)")
+      }
       val chains = traverseChainTree(chainTree)
+      if (debugLevel > 0) {
+        println("generateChains 2nd: transform the chain tree into a chain array (end)")
+      }
+
+      if (debugLevel > 0) {
+        println("End function generateChains (no warning)")
+      }
       chains
     }
   }  
