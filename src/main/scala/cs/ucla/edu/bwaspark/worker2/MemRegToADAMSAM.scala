@@ -85,8 +85,8 @@ object MemRegToADAMSAM {
     @param w, output
     */
 
-   def inferBw( l1: Int, l2: Int, score: Int, a: Int, q: Int, r: Int) : Int = {
-   //private def inferBw( l1: Int, l2: Int, score: Int, a: Int, q: Int, r: Int) : Int = {
+   //def inferBw( l1: Int, l2: Int, score: Int, a: Int, q: Int, r: Int) : Int = {
+   private def inferBw( l1: Int, l2: Int, score: Int, a: Int, q: Int, r: Int) : Int = {
      var w: Int = 0;
      if(l1 == l2 && (((l1 * a) - score) < ((q + r - a) << 1))) {
      }
@@ -100,6 +100,33 @@ object MemRegToADAMSAM {
      }
      w
    }
+
+   /*
+   get_rLen actually this function is barely called in the current flow
+   @param n_cigar
+   @param *cigar 
+   @param l output
+
+
+   */
+  // this one is not tested because it is never been used in 20 reads dataset
+
+  private def getRlen(cigar: List[Int]) : Int = {
+
+    var l: Int = 0
+    val nCigar = cigar.length
+    for(k <- 0 to nCigar - 1) {
+      var op: Int = cigar(k) & 0xf
+      if( op == 0 || op == 2) l += cigar(k) >>> 4
+
+    }
+    l
+  }
+	
+
+
+
+
 
   // wrapper implementation only for now
   /**
