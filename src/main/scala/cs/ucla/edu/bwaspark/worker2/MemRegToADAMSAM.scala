@@ -73,6 +73,34 @@ object MemRegToADAMSAM {
   }
 
 
+  //basic hit->SAM conversion
+  /**
+    *
+    @param l1
+    @param l2
+    @param score
+    @param a
+    @param q
+    @param r
+    @param w, output
+    */
+
+   def inferBw( l1: Int, l2: Int, score: Int, a: Int, q: Int, r: Int) : Int = {
+   //private def inferBw( l1: Int, l2: Int, score: Int, a: Int, q: Int, r: Int) : Int = {
+     var w: Int = 0;
+     if(l1 == l2 && (((l1 * a) - score) < ((q + r - a) << 1))) {
+     }
+     else {
+       var wDouble: Double = 0
+       wDouble = (((if( l1 < l2 ) l1 else l2) * a - score - q).toDouble / r.toDouble + 2.toDouble)
+       var absDifference: Int = if( l1 < l2 ) ( l2 - l1) else ( l1 - l2)
+       if( wDouble < absDifference ) w = absDifference
+       else w = wDouble.toInt
+       //w is the returned Integer
+     }
+     w
+   }
+
   // wrapper implementation only for now
   /**
     *  Transform the alignment registers to alignment type
