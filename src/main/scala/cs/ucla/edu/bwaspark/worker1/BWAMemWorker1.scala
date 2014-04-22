@@ -21,7 +21,7 @@ object BWAMemWorker1 {
                     pac: Array[Byte], //.pac file uint8_t
                     pes: Array[MemPeStat], //pes array
                     len: Int, //the length of the read
-                    seq: Array[Int] //a read
+                    seq: String //a read
                     ): MutableList[MemAlnRegType] = { //all possible alignment  
 
     //for paired alignment, to add
@@ -32,7 +32,7 @@ object BWAMemWorker1 {
 
       //pre-process: transform A/C/G/T to 0,1,2,3
 
-      def locusEncode(locus: Int): Byte = {
+      def locusEncode(locus: Char): Byte = {
         //transforming from A/C/G/T to 0,1,2,3
         locus match {
           case 'A' => 0
@@ -48,7 +48,7 @@ object BWAMemWorker1 {
         }
       }
 
-      val read: Array[Byte] = seq.map(ele => locusEncode(ele))
+      val read: Array[Byte] = seq.toCharArray.map(ele => locusEncode(ele))
 
       //first step: generate all possible MEM chains for this read
       val chains = generateChains(opt, bwt, bns.l_pac, len, read) 
@@ -57,16 +57,18 @@ object BWAMemWorker1 {
       val chainsFiltered = memChainFilter(opt, chains)
 
       //third step: for each chain, from chain to aligns
-      val regs = new MutableList[MemAlnRegType]
+      var regs = new MutableList[MemAlnRegType]
 
-      var alignRegArray: MutableList[MemAlnRegType] = null
+      //var alignRegArray: MutableList[MemAlnRegType] = null
 
       for (i <- 0 until chainsFiltered.length) {
-        alignRegArray = memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered(i), regs)
+        //alignRegArray = memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered(i), regs)
+        regs = memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered(i), regs)
       }
       //last step: sorting and deduplication
 
-      val pureRegArray = memSortAndDedup(alignRegArray, opt.maskLevelRedun)
+      //val pureRegArray = memSortAndDedup(alignRegArray, opt.maskLevelRedun)
+      val pureRegArray = memSortAndDedup(regs, opt.maskLevelRedun)
 
       pureRegArray
     }

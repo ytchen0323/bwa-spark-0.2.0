@@ -4,6 +4,8 @@ import scala.util.control.Breaks._
 import scala.math.abs
 
 object SWUtil {
+  val MINUS_INF = -0x40000000
+
   /**
     *  EHType: use for Smith Waterman Extension
     */
@@ -189,4 +191,115 @@ object SWUtil {
     retArray
   }
 
+  
+  def SWGlobal(
+    qLen: Int, query: Array[Byte], tLen: Int, target: Array[Byte], m: Int, mat: Array[Byte],
+    oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int/*, numCigar: Int*/) 
+  {
+
+    var eh: Array[EHType] = new Array[EHType](qLen + 1) // score array
+    var qp: Array[Byte] = new Array[Byte](qLen * m) // query profile
+    var oeDel = oDel + eDel
+    var oeIns = oIns + eIns
+    var i = 0
+    var k = 0
+    var nCol = 0
+
+    var numCigar = 0
+
+    for(i <- 0 until (qLen + 1))
+      eh(i) = new EHType(0, 0)
+
+    // maximum #columns of the backtrack matrix
+    if(qLen < (2 * w + 1)) nCol = qLen 
+    else nCol = 2 * w + 1
+    var z: Array[Byte] = new Array[Byte](nCol * tLen)
+
+    for(i <- 0 until (qLen + 1))
+      eh(i) = new EHType(0, 0)
+
+
+    // generate the query profile
+    i = 0
+    for(k <- 0 to (m - 1)) {
+      val p = k * m
+
+      for(j <- 0 to (qLen - 1)) {
+        qp(i) = mat(p + query(j))
+        i += 1
+      }
+    }
+
+    // fill the first row
+    eh(0).h = 0
+    eh(0).e = MINUS_INF
+
+    var j = 1
+    while(j <= qLen && j <= w) {
+      eh(j).h = -(oIns + eIns * j)
+      eh(j).e = MINUS_INF
+      j += 1
+    }
+    // everything is -inf outside the band
+    while(j <= qLen) {
+      eh(j).h = MINUS_INF
+      eh(j).e = MINUS_INF
+      j += 1
+    }
+
+    // DP loop
+    for(i <- 0 to (tLen - 1)) {
+      var f = MINUS_INF
+      var qPtr = target(i) * qLen
+      var zPtr = i * nCol
+      var beg = 0
+      var end = qLen
+      var h1 = MINUS_INF
+
+      if(i > w) beg = i - w
+      if(i + w + 1 < qLen) end = i + w + 1  // only loop through [beg,end) of the query sequence
+      if(beg == 0) h1 = -(oDel + eDel * (i + 1))
+
+      for(j <- beg to (end - 1)) {
+        // At the beginning of the loop: eh[j] = { H(i-1,j-1), E(i,j) }, f = F(i,j) and h1 = H(i,j-1)
+        // Cells are computed in the following order:
+        //   M(i,j)   = H(i-1,j-1) + S(i,j)
+        //   H(i,j)   = max{M(i,j), E(i,j), F(i,j)}
+        //   E(i+1,j) = max{M(i,j)-gapo, E(i,j)} - gape
+        //   F(i,j+1) = max{M(i,j)-gapo, F(i,j)} - gape
+        // We have to separate M(i,j); otherwise the direction may not be recorded correctly.
+        // However, a CIGAR like "10M3I3D10M" allowed by local() and extend() is disallowed by global().
+        // Such a CIGAR may occur, in theory, if mismatch_penalty > 2*gap_ext_penalty + 2*gap_open_penalty/k.
+        // In practice, this should happen very rarely given a reasonable scoring system.
+        var m = eh(j).h
+        var e = eh(j).e
+        eh(j).h = h1
+        m += qp(qPtr + j)
+        //var d: Byte = 1
+        var d = 1  // temporarily use Int here
+        if(m >= e) d = 0
+        var h = e
+        if(m >= e) h = m
+        if(h < f) d = 2
+        if(h < f) h = f
+        h1 = h
+        var t = m - oeDel
+        e -= eDel
+        if(e > t) d |= (1 << 2)
+        else d = 0
+        if(e < t) e = t
+        eh(j).e = e
+        t = m - oeIns
+        if(f > t) d |= (2 << 4)  // if we want to halve the memory, use one bit only, instead of two (in original C implementation)
+        else d = 0
+        if(f < t) f = t
+        z(zPtr + j - beg) = d.toByte  // z[i,j] keeps h for the current cell and e/f for the next cell
+      }
+
+      eh(end).h = h1
+      eh(end).e = MINUS_INF
+    }
+    
+  }
+    
 }

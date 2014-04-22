@@ -24,7 +24,8 @@ class BWTSMem {
   m_ok(1) = new BWTIntvType(0, 0, 0, 0, 0)
   m_ok(2) = new BWTIntvType(0, 0, 0, 0, 0)
   m_ok(3) = new BWTIntvType(0, 0, 0, 0, 0)
-  m_ok.foreach(s => println("s.l = " + s.l))
+  if (DebugFlag.debugBWTSMem == true)
+    m_ok.foreach(s => println("s.l = " + s.l))
   var mBWT : BWTType = _
 
   //local variable in the original bwt_extend
