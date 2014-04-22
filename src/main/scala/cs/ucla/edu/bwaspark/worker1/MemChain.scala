@@ -92,7 +92,7 @@ object MemChain {
                                  ele.endPoint > oriStart)
 
           //merge itr.matches and itr.sub and sort by start point (end point if start point equals)
-          itr.matches = (itr.matches.++(itr.sub)).sortWith((a, b) => (if (a.startPoint < b.startPoint) true else if (a.startPoint > b.startPoint) false else a.endPoint < b.endPoint))
+          itr.matches = (itr.matches.++(itr.sub)).sortWith((a, b) => (if (a.startPoint < b.startPoint) true else if (a.startPoint > b.startPoint) false else a.endPoint > b.endPoint))
         }
         var res = new MutableList[BWTIntvType]
         res = res.++(itr.matches)
@@ -163,6 +163,7 @@ object MemChain {
           for (j <- 0 until bwtIntvOnPoint(i).s.toInt) {
 
             //prepare for generating a new seed
+            if (debugLevel > 0) println("The parameter for calling suffixArrayPos2ReferencePos: " + (bwtIntvOnPoint(i).k + j))
             var rBeg = suffixArrayPos2ReferencePos(smemItr.bwt, bwtIntvOnPoint(i).k + j)
             var qBeg = bwtIntvOnPoint(i).startPoint
             var len = seedLen
@@ -188,11 +189,31 @@ object MemChain {
                   //because lower.pos < tmpChain.pos
                   //having refPoint + 1 to handle if lower.pos == tmpChain.pos
                   val tmpChain = new MemChainType(refPoint + 1, null)
-                  chainTree.lower(tmpChain)
+                  if (debugLevel > 0) {
+                    println("The tmpChain's refPoint is: " + (refPoint+1))
+                    println("Display the current chain tree")
+                    var itr = chainTree.iterator()
+                    while (itr.hasNext) {
+                      itr.next().print()
+                    }
+                  }
+                  val res = chainTree.lower(tmpChain)
+                  val tmp = chainTree.higher(tmpChain)
+                  if (debugLevel > 0) {
+                    if (res == null && chainTree.size != 0) println("Chain Tree is not empty but no lower node found")
+                    else { println("Lower chain found, which is:"); res.print()}
+                    if (tmp == null && chainTree.size != 0) println("Chain Tree is not empty but no higher node found")
+                    else { println("Higher chain found, which is:"); tmp.print()}
+                  }
+                  res
                 }
               }
 
               val targetChain = findClosestChain(chainTree, newSeed.rBeg)
+
+              if (debugLevel > 0) {
+                println("New seed is: (rBeg, qBeg, len) " + rBeg + " " + qBeg + " " + len)
+              }
 
               //test if the seed can be merged into some existing chain
               //return true/false
@@ -204,10 +225,18 @@ object MemChain {
                 //get query begin and end, reference begin and end
                 //!!!to clarify!!!: the order of seeds in a chain
                 //qBeg sorting? or rBeg sorting?
+                if (debugLevel > 0) {
+                  println("Trying merge a seed to a chain")
+                  println("The seed is: (rBeg, qBeg, len) " + seed.rBeg + " " + seed.qBeg + " " + seed.len)
+                  println("The chain is: ")
+                  chain.print()
+                }
                 val qBegChain = chain.seeds.head.qBeg
                 val rBegChain = chain.seeds.head.rBeg
                 val qEndChain = chain.seeds.last.qBeg + chain.seeds.last.len
                 val rEndChain = chain.seeds.last.rBeg + chain.seeds.last.len
+
+                if (debugLevel > 0) println("qBeg, rBeg, qEnd, rEnd of the chain are: " + qBegChain + " " + rBegChain + " " + qEndChain + " " + rEndChain)
 
                 //if the seed is fully contained by the chain, return true
                 if (qBegChain <= seed.qBeg && qEndChain >= seed.qBeg + seed.len &&
@@ -219,23 +248,28 @@ object MemChain {
                   false
                 else {
                   //follow the conditions judged in original BWA test_and_merge function
-                  val x = seed.qBeg - chain.seeds.last.qBeg // always non-negtive???
-                  val y = seed.rBeg - chain.seeds.last.rBeg
+                  val x: Int = seed.qBeg - chain.seeds.last.qBeg // always non-negtive???
+                  val y: Int = (seed.rBeg - chain.seeds.last.rBeg).toInt
 
                   if (y >= 0 &&
                       x - y <= opt.w &&
                       y - x <= opt.w &&
-                      x - chain.seeds.last.len < opt.maxChainGap &&
-                      y - chain.seeds.last.len < opt.maxChainGap) {
+                      x - chain.seeds.last.len.toInt < opt.maxChainGap &&
+                      y - chain.seeds.last.len.toInt < opt.maxChainGap) {
                     //all the conditions are satisfied? growing the chain
                     chain.seeds += seed
                     true //return true
                   }
-                  false
+                  else false
                 }
               }
 
-              val isMergable = tryMergeSeedToChain(opt, l_pac, targetChain, newSeed)
+              val isMergable = if (targetChain == null) false else tryMergeSeedToChain(opt, l_pac, targetChain, newSeed)
+
+              if (debugLevel > 0) {
+                if (!isMergable) println("Cannot be merged to any existing chain")
+                else targetChain.print()
+              }
 
               //add the seed as a new chain if not mergable
               if (!isMergable) {
@@ -247,7 +281,9 @@ object MemChain {
                   //using java style to new a TreeSet[MemChainType]
                   chainTree = new TreeSet[MemChainType](new Comparator[MemChainType]() {
                     def compare(a: MemChainType, b: MemChainType): Int = {
-                      (a.pos - b.pos).toInt
+                      if (a.pos > b.pos) 1
+                      else if (a.pos < b. pos) -1
+                      else 0
                     }
                   } )
                   //insert the chain to the tree
