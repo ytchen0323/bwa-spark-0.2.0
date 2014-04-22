@@ -8,6 +8,8 @@ object SAPos2RefPos {
 
   def occAux(y: Long, c: Int): Int = {
 
+    //println("The previous y is: " + y)
+
     var res1 = 0l
     var res2 = 0l
 
@@ -25,6 +27,8 @@ object SAPos2RefPos {
 
     res1 = tmp1 & tmp2 & tmp3
 
+    //println("The 1st result is: " + res1)
+
     tmp3 = 0x3333333333333333l
 
     tmp1 = (res1 & tmp3)
@@ -33,11 +37,15 @@ object SAPos2RefPos {
 
     res2 = tmp1 + tmp2
 
+    //println("The 2nd result is: " + res2)
+
     tmp3 = 0x0f0f0f0f0f0f0f0fl
 
     tmp1 = (res2 + (res2 >>> 4)) & tmp3
 
     tmp1 = tmp1 * 0x0101010101010101l
+
+    //println("The return value is: " + (tmp1 >>> 56).toInt)
 
     (tmp1 >>> 56).toInt
   }
@@ -56,10 +64,15 @@ object SAPos2RefPos {
     else {
       if (k >= bwt.primary) k = k - 1
 
+      //println(k)
       //calculate new pointer position
       var newStartPoint = (k >>> 7) << 4
+      //println(c)
 
-      n = bwt.bwt(c)
+      n = (bwt.bwt(c * 2 + 1 + newStartPoint.toInt)).toLong
+      n = n << 32
+      n = n + (bwt.bwt(c * 2 + newStartPoint.toInt)).toLong
+      //println ("The n in bwtOcc is: " + n)
 
       //jump to the start of the first bwt cell
 
@@ -68,13 +81,18 @@ object SAPos2RefPos {
       val occIntvMask = (1l << 7) - 1l
 
       var newEndPoint = newStartPoint + (((k >>> 5) - ((k & ~occIntvMask) >>> 5)) << 1)
+      //println((((k >>> 5) - ((k & ~occIntvMask) >>> 5)) << 1))
       while (newStartPoint < newEndPoint) {
-        n = n + occAux(bwt.bwt(newStartPoint.toInt) << 32 | bwt.bwt(newStartPoint.toInt + 1), c)
+        n = n + occAux(((bwt.bwt(newStartPoint.toInt).toLong << 32) | (bwt.bwt(newStartPoint.toInt + 1).toLong << 32 >>> 32)), c)
         newStartPoint += 2
       }
-      n += occAux((bwt.bwt(newStartPoint.toInt) << 32 | bwt.bwt(newStartPoint.toInt + 1)) & ~((1l << ((~k & 31) << 1)) - 1), c)
+      //println ("The n after loop is: " + n)
+      //println (bwt.bwt(newStartPoint.toInt))
+      //println (bwt.bwt(newStartPoint.toInt + 1))
+      n += occAux(((bwt.bwt(newStartPoint.toInt).toLong << 32) | (bwt.bwt(newStartPoint.toInt + 1).toLong << 32 >>> 32)) & ~((1l << ((~k & 31) << 1)) - 1), c)
+      //println (n)
       if (c == 0) n -= ~k & 31
-
+      //println ("The final n is: " + n)
       n
 
     }
@@ -84,9 +102,18 @@ object SAPos2RefPos {
   def bwtInvPsi(bwt:BWTType, k: Long): Long = {
     var x: Long = if (k > bwt.primary) k - 1 else k
 
-    var bwtBwt = bwt.bwt(((k >>> 7 << 4) + 8 + ((k & 0x7f) >>> 4)).toInt)
-    x = bwtBwt >> (((~k & 0xf) << 1) & 3)
+    //println("The x before bwt_B0 is " + x)
+    var bwtBwt = bwt.bwt(((x >>> 7 << 4) + 8 + ((x & 0x7f) >>> 4)).toInt)
+    //println(((x >>> 7 << 4) + 8 + ((x & 0x7f) >>> 4)))
+    //println(bwtBwt)
+    //println((((~x & 0xf) << 1) & 3))
+    //println(bwtBwt >>> (((~x & 0xf) << 1) & 3))
+    x = bwtBwt >>> (((~x & 0xf) << 1).toInt) & 3
+    //println("The x for bwt L2 access is " + x)
+    //println(bwt.L2(x.toInt))
+    //println(bwtOcc(bwt, k, x))
     x = bwt.L2(x.toInt) + bwtOcc(bwt, k, x)
+    //println("The x for return is " + x)
     if (k == bwt.primary) 0
     else x
   }
