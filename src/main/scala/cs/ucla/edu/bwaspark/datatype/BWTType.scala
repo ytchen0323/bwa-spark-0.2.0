@@ -67,10 +67,10 @@ class BWTType {
     fc.close
 
     // Debugging message
-    println("saIntv: " + saIntv)
-    println("numSa: " + numSa)
-    for(i <- 0 to 19)
-      println("sa(" + i + "): " + sa(i))
+    //println("saIntv: " + saIntv)
+    //println("numSa: " + numSa)
+    //for(i <- 0 to 19)
+      //println("sa(" + i + "): " + sa(i))
   }
 
   /**
@@ -99,14 +99,14 @@ class BWTType {
     fc.close
 
     // Debugging messages
-    println("File size: " + fileSize)
-    println("primary: " + primary)
-    println("bwtSize: " + bwtSize)
-    println("seqLen: " + seqLen)
-    for(i <- 0 to 4) 
-      println("L2(" + i + "): " + L2(i))
-    for(i <- 0 to 19)
-      println("bwt(" + i + "): " + bwt(i))
+    //println("File size: " + fileSize)
+    //println("primary: " + primary)
+    //println("bwtSize: " + bwtSize)
+    //println("seqLen: " + seqLen)
+    //for(i <- 0 to 4) 
+      //println("L2(" + i + "): " + L2(i))
+    //for(i <- 0 to 19)
+      //println("bwt(" + i + "): " + bwt(i))
   }
 
   /**
@@ -131,8 +131,8 @@ class BWTType {
     }
 
     // Debugging messages
-    for(i <- 0 to 255) 
-      println("cntTable(" + i + "): " + cntTable(i))
+    //for(i <- 0 to 255) 
+      //println("cntTable(" + i + "): " + cntTable(i))
   }
 }
 
