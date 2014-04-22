@@ -146,22 +146,22 @@ object MemRegToADAMSAM {
   }
 
   private def bwaGenCigar2(mat: Array[Byte], oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, pacLen: Long, pac: Array[Byte], 
-    queryLen: Int, query_i: Array[Byte], rBeg: Long, rEnd: Long): (Int, Int, Int, Array[Int]) = {
+    queryLen: Int, query_i: Array[Byte], rBeg: Long, rEnd: Long): (Int, Int, Int, String) = {
 
     var numCigar = 0
     var NM = -1
     var score = 0
-    var cigar: Array[Int] = null
+    var cigar: String = ""
 
     // reject if negative length or bridging the forward and reverse strand
-    if(queryLen <= 0 || rBeg >= rEnd || (rBeg < pacLen && rEnd > pacLen)) (0, 0, 0, null)
+    if(queryLen <= 0 || rBeg >= rEnd || (rBeg < pacLen && rEnd > pacLen)) (0, 0, 0, cigar)
     else {
       val ret = bnsGetSeq(pacLen, pac, rBeg, rEnd)
       var rseq = ret._1
       val rlen = ret._2
 
       // possible if out of range
-      if(rEnd - rBeg != rlen) (0, 0, 0, null)
+      if(rEnd - rBeg != rlen) (0, 0, 0, cigar)
       else {
         var query = query_i
 
@@ -182,8 +182,9 @@ object MemRegToADAMSAM {
         // no gap; no need to do DP
         if(queryLen == (rEnd - rBeg) && w == 0) {
           // FIXME: due to an issue in mem_reg2aln(), we never come to this block. This does not affect accuracy, but it hurts performance. (in original C implementation)
-          cigar = new Array[Int](1)
-          cigar(0) = queryLen << 4 | 0
+
+          //cigar = new Array[Int](1)
+          //cigar = queryLen << 4 | 0
           numCigar = 1
 
           for(i <- 0 to (queryLen - 1)) 
@@ -217,13 +218,13 @@ object MemRegToADAMSAM {
 
         for(k <- 0 to (numCigar - 1)) {
           // cigar = (uint32_t*)str.s;
-          var op = cigar(k) & 0xf
-          var len = cigar(k) >> 4
+          //var op = cigar(k) & 0xf
+          //var len = cigar(k) >> 4
           
           // match
-          if(op == 0) {
-
-          }
+          //if(op == 0) {
+          //
+          //}
         }
         
         (0, 0, 0, cigar)
