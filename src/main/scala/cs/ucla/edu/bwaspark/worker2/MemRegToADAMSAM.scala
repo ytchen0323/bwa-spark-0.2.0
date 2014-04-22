@@ -4,6 +4,7 @@ import scala.util.control.Breaks._
 import scala.List
 import scala.collection.mutable.MutableList
 import scala.math.log
+import scala.math.abs
 
 import cs.ucla.edu.bwaspark.datatype._
 import cs.ucla.edu.bwaspark.util.BNTSeqUtil._
@@ -72,6 +73,62 @@ object MemRegToADAMSAM {
   }
 
 
+  //basic hit->SAM conversion
+  /**
+    *
+    @param l1
+    @param l2
+    @param score
+    @param a
+    @param q
+    @param r
+    @param w, output
+    */
+
+   //def inferBw( l1: Int, l2: Int, score: Int, a: Int, q: Int, r: Int) : Int = {
+   private def inferBw( l1: Int, l2: Int, score: Int, a: Int, q: Int, r: Int) : Int = {
+     var w: Int = 0;
+     if(l1 == l2 && (((l1 * a) - score) < ((q + r - a) << 1))) {
+     }
+     else {
+       var wDouble: Double = 0
+       wDouble = (((if( l1 < l2 ) l1 else l2) * a - score - q).toDouble / r.toDouble + 2.toDouble)
+       var absDifference: Int = if( l1 < l2 ) ( l2 - l1) else ( l1 - l2)
+       if( wDouble < absDifference ) w = absDifference
+       else w = wDouble.toInt
+       //w is the returned Integer
+     }
+     w
+   }
+
+   /*
+   get_rLen actually this function is barely called in the current flow
+   @param n_cigar
+   @param *cigar 
+   @param l output
+
+
+   */
+  // this one is not tested because it is never been used in 20 reads dataset
+
+  private def getRlen(cigar: List[Int]) : Int = {
+
+    var l: Int = 0
+    val nCigar = cigar.length
+    for(k <- 0 to nCigar - 1) {
+      var op: Int = cigar(k) & 0xf
+      if( op == 0 || op == 2) l += cigar(k) >>> 4
+
+    }
+    l
+  }
+	
+
+
+
+
+
+  // wrapper implementation only for now
   /**
     *  Transform the alignment registers to alignment type
     *
@@ -135,7 +192,7 @@ object MemRegToADAMSAM {
 
   }  
 
-
+  // wrapper implementation only for now
   private def bwaFixXref2(mat: Array[Byte], oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, bns: BNTSeqType, 
     pac: Array[Byte], query: Array[Byte], qBeg: Int, qEnd: Int, rBeg: Long, rEnd: Long): Array[Int] = {
     var retArray = new Array[Int](5)
@@ -144,10 +201,91 @@ object MemRegToADAMSAM {
   }
 
   private def bwaGenCigar2(mat: Array[Byte], oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, pacLen: Long, pac: Array[Byte], 
-    queryLen: Int, query: Array[Byte], rb: Long, re: Long): (Int, Int, Int, Array[Int]) = {
-    var cigar: Array[Int] = new Array[Int](10)    
+    queryLen: Int, query_i: Array[Byte], rBeg: Long, rEnd: Long): (Int, Int, Int, String) = {
 
-    (0, 0, 0, cigar)
+    var numCigar = 0
+    var NM = -1
+    var score = 0
+    var cigar: String = ""
+
+    // reject if negative length or bridging the forward and reverse strand
+    if(queryLen <= 0 || rBeg >= rEnd || (rBeg < pacLen && rEnd > pacLen)) (0, 0, 0, cigar)
+    else {
+      val ret = bnsGetSeq(pacLen, pac, rBeg, rEnd)
+      var rseq = ret._1
+      val rlen = ret._2
+
+      // possible if out of range
+      if(rEnd - rBeg != rlen) (0, 0, 0, cigar)
+      else {
+        var query = query_i
+
+        // then reverse both query and rseq; this is to ensure indels to be placed at the leftmost position
+        if(rBeg >= pacLen) {
+          for(i <- 0 to ((queryLen >> 1) - 1)) {
+            var tmp = query(i)
+            query(i) = query(queryLen - 1 - i)
+            query(queryLen - 1 - i) = tmp
+          }
+            
+          for(i <- 0 to ((rlen >> 1) - 1).toInt) {
+            var tmp = rseq(i)
+            rseq(i) = rseq((rlen - 1 - i).toInt)
+            rseq((rlen - 1 - i).toInt) = tmp
+          }
+        }        
+        // no gap; no need to do DP
+        if(queryLen == (rEnd - rBeg) && w == 0) {
+          // FIXME: due to an issue in mem_reg2aln(), we never come to this block. This does not affect accuracy, but it hurts performance. (in original C implementation)
+
+          //cigar = new Array[Int](1)
+          //cigar = queryLen << 4 | 0
+          numCigar = 1
+
+          for(i <- 0 to (queryLen - 1)) 
+            score += mat(rseq(i) * 5 + query(i))
+        }
+        else {
+          val maxIns = ((((queryLen + 1) >> 1) * mat(0) - oIns).toDouble / eIns + 1.0).toInt
+          val maxDel = ((((queryLen + 1) >> 1) * mat(0) - oDel).toDouble / eDel + 1.0).toInt
+          var maxGap = maxIns
+          if(maxIns < maxDel) maxGap = maxDel
+
+          var width = (maxGap + abs((rlen - queryLen) + 1)) >> 1
+          if(width > w) width = w
+          val minWidth = abs(rlen - queryLen) + 3
+          if(width < minWidth) width = minWidth
+          // NW alignment
+          //score = ksw_global2(l_query, query, rlen, rseq, 5, mat, o_del, e_del, o_ins, e_ins, w, n_cigar, &cigar);
+        }
+       
+        // compute NM and MD
+        // str.l = str.m = *n_cigar * 4; str.s = (char*)cigar; // append MD to CIGAR   
+        var int2base = ""
+        var x = 0
+        var y = 0
+        var u = 0
+        var n_mm = 0
+        var nGap = 0
+
+        if(rBeg < pacLen) int2base = "ACGTN"
+        else int2base = "TGCAN"        
+
+        for(k <- 0 to (numCigar - 1)) {
+          // cigar = (uint32_t*)str.s;
+          //var op = cigar(k) & 0xf
+          //var len = cigar(k) >> 4
+          
+          // match
+          //if(op == 0) {
+          //
+          //}
+        }
+        
+        (0, 0, 0, cigar)
+      }
+    }
+
   }
 }
 
