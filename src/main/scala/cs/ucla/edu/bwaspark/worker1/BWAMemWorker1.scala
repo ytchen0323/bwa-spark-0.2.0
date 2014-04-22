@@ -58,8 +58,12 @@ object BWAMemWorker1 {
 
       //third step: for each chain, from chain to aligns
       val regs = new MutableList[MemAlnRegType]
-      val alignRegArray = chainsFiltered.map(ele => memChainToAln(opt, bns.l_pac, pac, len, read, ele, regs)).reduce( (a,b) => b)
 
+      var alignRegArray: MutableList[MemAlnRegType] = null
+
+      for (i <- 0 until chainsFiltered.length) {
+        alignRegArray = memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered(i), regs)
+      }
       //last step: sorting and deduplication
 
       val pureRegArray = memSortAndDedup(alignRegArray, opt.maskLevelRedun)
