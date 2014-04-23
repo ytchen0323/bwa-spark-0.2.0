@@ -16,9 +16,28 @@ object BWAMemWorker2 {
     *  @param pac the PAC array
     *  @param seq the read (NOTE: currently we use Array[Byte] first. may need to be changed!!!)
     */
-  def bwaMemWorker2(opt: MemOptType, regs: MutableList[MemAlnRegType], bns: BNTSeqType, pac: Array[Byte], seq: Array[Byte], numProcessed: Long) {
+  def bwaMemWorker2(opt: MemOptType, regs: MutableList[MemAlnRegType], bns: BNTSeqType, pac: Array[Byte], seq: String, numProcessed: Long) {
     val regsOut = memMarkPrimarySe(opt, regs, numProcessed)
-    memRegToSAMSe(opt, bns, pac, seq, regsOut, 0, null)
+    
+    //pre-process: transform A/C/G/T to 0,1,2,3
+
+    def locusEncode(locus: Char): Byte = {
+      //transforming from A/C/G/T to 0,1,2,3
+      locus match {
+        case 'A' => 0
+        case 'a' => 0
+        case 'C' => 1
+        case 'c' => 1
+        case 'G' => 2
+        case 'g' => 2
+        case 'T' => 3
+        case 't' => 3
+        case '-' => 5
+        case _ => 4
+      }
+    }
+
+    memRegToSAMSe(opt, bns, pac, seq.toCharArray.map(ele => locusEncode(ele)), regsOut, 0, null)
   }
 
 }

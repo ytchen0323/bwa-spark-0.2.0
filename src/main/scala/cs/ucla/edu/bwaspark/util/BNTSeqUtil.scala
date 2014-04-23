@@ -1,5 +1,9 @@
 package cs.ucla.edu.bwaspark.util
 
+import scala.util.control.Breaks._
+
+import cs.ucla.edu.bwaspark.datatype.BNTSeqType
+
 object BNTSeqUtil {
   /**
     *  Retrieve the reference sequence
@@ -62,6 +66,55 @@ object BNTSeqUtil {
   private def getPac(pac: Array[Byte], l: Long) : Long = {
     var pacValue: Long = ( pac((l>>>2).toInt) >>> (((~l)&3) <<1) ) & 3
     pacValue
+  }
+
+  
+  /**
+    *  bnsDepos:
+    *  
+    *  @param bns the bns object
+    *  @param pos the position in the reference
+    */
+  def bnsDepos(bns: BNTSeqType, pos: Long): (Long, Int) = {
+    var isRev = 0
+    if(pos >= bns.l_pac) isRev = 1
+    else isRev = 0
+
+    if(isRev == 1) ((bns.l_pac << 1) - 1 - pos, 1)
+    else (pos, 0)
+  }
+
+  
+  /**
+    *  bnsPosToRid
+    *  
+    *  @param bns the bns object
+    *  @param posF
+    */
+  def bnsPosToRid(bns: BNTSeqType, posF: Long): Int = {
+    if(posF >= bns.l_pac) -1
+    else {
+      var left = 0
+      var mid = 0
+      var right = bns.n_seqs
+      
+      // binary search
+      breakable {
+        while(left < right) {
+          mid = (left + right) >> 1
+        
+          if(posF >= bns.anns(mid).offset) {
+            if(mid == bns.n_seqs - 1) break
+            if(posF < bns.anns(mid + 1).offset) break
+            left = mid + 1
+          }
+          else
+            right = mid
+        }
+      }
+
+      mid
+    }
   }
 
 }

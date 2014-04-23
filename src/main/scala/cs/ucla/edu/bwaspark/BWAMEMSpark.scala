@@ -36,6 +36,11 @@ object BWAMEMSpark {
     seqs
   }
 
+  class testRead {
+    var seq: String = _
+    var regs: MutableList[MemAlnRegType] = new MutableList[MemAlnRegType]
+  }
+
   def main(args: Array[String]) {
     //val sc = new SparkContext("local[12]", "BWA-mem Spark",
        //"/home/hadoopmaster/spark/spark-0.9.0-incubating-bin-hadoop2-prebuilt/", List("/home/ytchen/incubator/bwa-spark-0.2.0/target/bwa-spark-0.2.0.jar"))
@@ -61,6 +66,7 @@ object BWAMEMSpark {
     //debugLevel = 1
 
     //loading reads
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read.fq")
     var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq")
 
     val regsAllReads = seqs.map( seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq) )
@@ -80,5 +86,14 @@ object BWAMEMSpark {
       readNum += 1
     } )
 
+    var testReads = new MutableList[testRead]
+    for(i <- 0 to (seqs.length - 1)) {
+      var read = new testRead
+      read.seq = seqs(i)
+      read.regs = regsAllReads(i)
+      testReads += read
+    }
+
+    testReads.map(read => bwaMemWorker2(bwaMemOpt, read.regs, bwaIdx.bns, bwaIdx.pac, read.seq, 0) )
   } 
 }

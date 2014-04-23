@@ -47,7 +47,7 @@ object MemRegToADAMSAM {
         if(regs(i).secondary < 0 || ((opt.flag & MEM_F_ALL) > 0)) {
           if(regs(i).secondary < 0 || regs(i).score >= regs(regs(i).secondary).score * 0.5) {
             // debugging
-            print("i=" + i + " ")
+            //print("i=" + i + " ")
             var aln = memRegToAln(opt, bns, pac, 101, seq, regs(i))   // NOTE: current data structure has not been obtained from RDD. We assume the length to be 101 here
             alns += aln
             aln.flag |= extraFlag   // flag secondary
@@ -125,10 +125,6 @@ object MemRegToADAMSAM {
   }
 	
 
-
-
-
-
   // wrapper implementation only for now
   /**
     *  Transform the alignment registers to alignment type
@@ -142,11 +138,72 @@ object MemRegToADAMSAM {
     */
   private def memRegToAln(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], seqLen: Int, seq: Array[Byte], reg: MemAlnRegType): MemAlnType = {
     val aln = new MemAlnType
-    if(reg != null) {
-      println(memApproxMapqSe(opt, reg))
-      bwaFixXref2(opt.mat, opt.oDel, opt.eDel, opt.oIns, opt.eIns, opt.w, bns, pac, seq, reg.qBeg, reg.qEnd, reg.rBeg, reg.rEnd)
+
+    if(reg == null || reg.rBeg < 0 || reg.rEnd < 0) {
+      aln.rid = -1
+      aln.pos = -1
+      aln.flag |= 0x4
+      aln
     }
-    aln
+    else {
+      val qb = reg.qBeg
+      val qe = reg.qEnd
+      val rb = reg.rBeg
+      val re = reg.rEnd
+
+      if(reg.secondary < 0) 
+        aln.mapq = memApproxMapqSe(opt, reg).toShort
+      else
+        aln.mapq = 0
+
+      // secondary alignment
+      if(reg.secondary >= 0) aln.flag |= 0x100 
+
+      val ret = bwaFixXref2(opt.mat, opt.oDel, opt.eDel, opt.oIns, opt.eIns, opt.w, bns, pac, seq, reg.qBeg, reg.qEnd, reg.rBeg, reg.rEnd)
+      val iden = ret._5
+      if(iden < 0) {
+        println("[Error] If you see this message, please let the developer know. Abort. Sorry.")
+        assert(false, "bwaFixXref2() problem")
+      }
+
+      var tmp = inferBw(qe - qb, (re - rb).toInt, reg.trueScore, opt.a, opt.oDel, opt.eDel)
+      var w2 = inferBw(qe - qb, (re - rb).toInt, reg.trueScore, opt.a, opt.oIns, opt.eIns)
+      if(w2 < tmp) w2 = tmp
+      if(w2 > opt.w) {
+        if(w2 > reg.width) w2 = reg.width
+      }
+      //else w2 = opt.w  // TODO: check if we need this line on long reads. On 1-800bp reads, it does not matter and it should be. (In original C implementation)
+
+      var i = 0
+      aln.cigar = null
+      var score = 0
+      var lastScore = -(1 << 30)
+
+      breakable {
+        do {
+          // make a copy to pass into bwaGenCigar2
+          // if there is performance issue later, we may modify the underlying implementation
+          var query: Array[Byte] = new Array[Byte](qe - qb)
+          for(i <- 0 to (qe - qb - 1)) query(i) = seq(qb + i)
+ 
+          var ret = bwaGenCigar2(opt.mat, opt.oDel, opt.eDel, opt.oIns, opt.eIns, w2, bns.l_pac, pac, qe - qb, query, rb, re)
+          score = ret._1
+          aln.nCigar = ret._2
+          aln.NM = ret._3
+          aln.cigar = ret._4
+
+          if(score == lastScore) break
+          lastScore = score
+          w2 <<= 1
+
+          i += 1
+        } while(i < 3 && score < reg.trueScore - opt.a)
+
+        // NOTE!!!: Need to be implemented below
+      }
+
+      aln
+    }
   }
 
   /**
@@ -195,29 +252,61 @@ object MemRegToADAMSAM {
 
   // wrapper implementation only for now
   private def bwaFixXref2(mat: Array[Byte], oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, bns: BNTSeqType, 
-    pac: Array[Byte], query: Array[Byte], qBeg: Int, qEnd: Int, rBeg: Long, rEnd: Long): Array[Int] = {
+    pac: Array[Byte], query: Array[Byte], qBeg: Int, qEnd: Int, rBeg: Long, rEnd: Long): (Int, Int, Long, Long, Int) = {
     var retArray = new Array[Int](5)
-    bwaGenCigar2(mat, oDel, eDel, oIns, eIns, w, bns.l_pac, pac, qEnd - qBeg, query, rBeg, rEnd)
-    retArray
+
+    // cross the for-rev boundary; actually with BWA-MEM, we should never come to here
+    if(rBeg < bns.l_pac && rEnd > bns.l_pac) {
+      println("[ERROR] In BWA-mem, we should never come to here")
+      (-1, -1, -1, -1, -1)  // unable to fix
+    }
+    else {
+      val ret = bnsDepos(bns, (rBeg + rEnd) >> 1)  // coordinate of the middle point on the forward strand
+      val fm = ret._1
+      val isRev = ret._2
+      val ra = bns.anns(bnsPosToRid(bns, fm))  // annotation of chr corresponding to the middle point
+      var cb = ra.offset
+      if(isRev > 0) cb = (bns.l_pac << 1) - (ra.offset + ra.len)
+      var ce = cb + ra.len   // chr end
+
+      // fix is needed
+      if(cb > rBeg || ce < rEnd) {
+        var queryArr: Array[Byte] = new Array[Byte](qEnd - qBeg)
+        // make a copy to pass into bwaGenCigar2 
+        // if there is performance issue later, we may modify the underlying implementation
+        for(i <- 0 to (qEnd - qBeg - 1)) queryArr(i) = query(qBeg + i)
+
+        val ret = bwaGenCigar2(mat, oDel, eDel, oIns, eIns, w, bns.l_pac, pac, qEnd - qBeg, queryArr, rBeg, rEnd)
+        //val numCigar = ret._2
+        //val cigar = ret._4
+
+        // NOTE!!!: Need to be implemented!!! temporarily skip this for loop
+      }
+    
+      var iden = 0
+      if(qBeg == qEnd || rBeg == rEnd) iden = -2
+      (qBeg, qEnd, rBeg, rEnd, iden)
+    }
+
   }
 
   private def bwaGenCigar2(mat: Array[Byte], oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, pacLen: Long, pac: Array[Byte], 
-    queryLen: Int, query_i: Array[Byte], rBeg: Long, rEnd: Long): (Int, Int, Int, MutableList[CigarSegType]) = {
+    queryLen: Int, query_i: Array[Byte], rBeg: Long, rEnd: Long): (Int, Int, Int, CigarType) = {
 
     var numCigar = 0
     var NM = -1
     var score = 0
-    var cigar = new MutableList[CigarSegType]
+    var cigar = new CigarType
 
     // reject if negative length or bridging the forward and reverse strand
-    if(queryLen <= 0 || rBeg >= rEnd || (rBeg < pacLen && rEnd > pacLen)) (0, 0, 0, cigar)
+    if(queryLen <= 0 || rBeg >= rEnd || (rBeg < pacLen && rEnd > pacLen)) (0, 0, 0, null)
     else {
       val ret = bnsGetSeq(pacLen, pac, rBeg, rEnd)
       var rseq = ret._1
       val rlen = ret._2
 
       // possible if out of range
-      if(rEnd - rBeg != rlen) (0, 0, 0, cigar)
+      if(rEnd - rBeg != rlen) (0, 0, 0, null)
       else {
         var query = query_i
 
@@ -238,11 +327,12 @@ object MemRegToADAMSAM {
         // no gap; no need to do DP
         if(queryLen == (rEnd - rBeg) && w == 0) {
           // FIXME: due to an issue in mem_reg2aln(), we never come to this block. This does not affect accuracy, but it hurts performance. (in original C implementation)
-
-          val cigarSeg = new CigarSegType
+          println("ENTER!!!")
+          var cigarSeg = new CigarSegType
           cigarSeg.len = queryLen 
           cigarSeg.op = 0
           numCigar = 1
+          cigar.cigarSegs += cigarSeg
 
           for(i <- 0 to (queryLen - 1)) 
             score += mat(rseq(i) * 5 + query(i))
@@ -258,9 +348,10 @@ object MemRegToADAMSAM {
           val minWidth = abs(rlen - queryLen) + 3
           if(width < minWidth) width = minWidth
           // NW alignment
-          val ret = SWGlobal(queryLen, query, rlen.toInt, rseq, 5, mat, oDel, eDel, oIns, eIns, width.toInt, numCigar, cigar)
+          val ret = SWGlobal(queryLen, query, rlen.toInt, rseq, 5, mat, oDel, eDel, oIns, eIns, width.toInt, numCigar, cigar.cigarSegs)
           score = ret._1
           numCigar = ret._2
+          println("cigarSegs.length: " + cigar.cigarSegs.length)
           //score = ksw_global2(l_query, query, rlen, rseq, 5, mat, o_del, e_del, o_ins, e_ins, w, n_cigar, &cigar);
         }
        
@@ -276,16 +367,20 @@ object MemRegToADAMSAM {
         if(rBeg < pacLen) int2base = Array('A', 'C', 'G', 'T', 'N')
         else int2base = Array('T', 'G', 'C', 'A', 'N')        
 
+        println("numCigar: " + numCigar)
+
         for(k <- 0 to (numCigar - 1)) {
-          val op = cigar(k).op
-          val len = cigar(k).len
-          
+          val op = cigar.cigarSegs(k).op
+          val len = cigar.cigarSegs(k).len
+        
+          println("op " + op + ", len " + len)
+  
           // match
           if(op == 0) {
             for(i <- 0 to (len - 1)) {
               if(query(x + i) != rseq(y + i)) {
-                cigar(k).seg += u.toString
-                cigar(k).seg += int2base(rseq(y + i))
+                cigar.cigarStr += u.toString
+                cigar.cigarStr += int2base(rseq(y + i))
                 n_mm += 1
                 u = 0
               }
@@ -299,10 +394,10 @@ object MemRegToADAMSAM {
           else if(op == 2) {
             // don't do the following if D is the first or the last CIGAR
             if(k > 0 && k < numCigar - 1) {
-              cigar(k).seg += u.toString
-              cigar(k).seg ++= "^"
+              cigar.cigarStr += u.toString
+              cigar.cigarStr += '^'
               
-              for(i <- 0 to (len - 1)) cigar(k).seg += int2base(rseq(y + i))
+              for(i <- 0 to (len - 1)) cigar.cigarStr += int2base(rseq(y + i))
               
               u = 0
               nGap += len
@@ -317,8 +412,22 @@ object MemRegToADAMSAM {
           }
         }
         
+        cigar.cigarStr += u.toString
+        var NM = n_mm + nGap
+
+        // reverse back query 
+        // This is done in original C implementation. However, in the current implementation, the query is a copy
+        // from the original array. Therefore, we do not need to reverse this copy back
+        //if(rBeg >= pacLen) 
+          //for(i <- 0 to ((queryLen >> 1) - 1)) {
+            //var tmp = query(i)
+            //query(i) = query(queryLen - 1 - i)
+            //query(queryLen - 1 - i) = tmp
+          //}
         
-        (0, 0, 0, cigar)
+        println(cigar.cigarStr)
+
+        (score, numCigar, NM, cigar)
       }
     }
 
