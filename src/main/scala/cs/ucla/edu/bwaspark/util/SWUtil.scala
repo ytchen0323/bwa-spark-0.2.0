@@ -2,6 +2,9 @@ package cs.ucla.edu.bwaspark.util
 
 import scala.util.control.Breaks._
 import scala.math.abs
+import scala.collection.mutable.MutableList
+
+import cs.ucla.edu.bwaspark.datatype.CigarSegType
 
 object SWUtil {
   val MINUS_INF = -0x40000000
@@ -194,8 +197,7 @@ object SWUtil {
   
   def SWGlobal(
     qLen: Int, query: Array[Byte], tLen: Int, target: Array[Byte], m: Int, mat: Array[Byte],
-    oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int/*, numCigar: Int*/) 
-  {
+    oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, numCigar: Int, cigar: MutableList[CigarSegType]): (Int, Int) = {
 
     var eh: Array[EHType] = new Array[EHType](qLen + 1) // score array
     var qp: Array[Byte] = new Array[Byte](qLen * m) // query profile
@@ -205,7 +207,6 @@ object SWUtil {
     var k = 0
     var nCol = 0
 
-    var numCigar = 0
 
     for(i <- 0 until (qLen + 1))
       eh(i) = new EHType(0, 0)
@@ -300,6 +301,64 @@ object SWUtil {
       eh(end).e = MINUS_INF
     }
     
+    val score = eh(qLen).h
+    
+    // backtrack
+    var numCigarTmp = numCigar
+    if(numCigarTmp > 0 && cigar != null) {
+      var which = 0
+      // (i,k) points to the last cell
+      var i = tLen - 1
+      var k = 0
+      if(i + w + 1 < qLen) k = i + w
+      else k = qLen - 1
+
+      while(i >= 0 && k >= 0) {
+        if(i > w) which = z(i * nCol + (k - (i - w))) >> (which << 1) & 3
+        else which = z(i * nCol + k) >> (which << 1) & 3
+
+        if(which == 0) { 
+          numCigarTmp = pushCigar(numCigarTmp, cigar, 0, 1) 
+          i -= 1
+          k -= 1
+        }
+        else if(which == 1) {
+          numCigarTmp = pushCigar(numCigarTmp, cigar, 2, 1)
+          i -= 1
+        }
+        else {
+          numCigarTmp = pushCigar(numCigarTmp, cigar, 1, 1)
+          k -= 1
+        }
+      }
+
+      if(i >= 0) numCigarTmp = pushCigar(numCigarTmp, cigar, 2, i + 1)
+      if(k >= 0) numCigarTmp = pushCigar(numCigarTmp, cigar, 1, k + 1)
+
+      for(i <- 0 to (numCigarTmp - 1)) {
+        var tmp = cigar(i)
+        cigar(i) = cigar(numCigarTmp - 1 - i)
+        cigar(numCigarTmp - 1 - i) = tmp
+      }
+    }    
+
+    (score, numCigarTmp)
   }
     
+  
+  private def pushCigar(numCigar: Int, cigar: MutableList[CigarSegType], op: Byte, len: Int): Int = {
+    var numCigarTmp = numCigar
+
+    if(numCigarTmp == 0 || op != cigar(numCigarTmp - 1).op) { 
+      var cigarSeg = new CigarSegType
+      cigarSeg.len = len
+      cigarSeg.op = op
+      cigar += cigarSeg
+      numCigarTmp += 1
+    }
+    else cigar(numCigarTmp - 1).len += len
+
+    numCigarTmp
+  }
+
 }

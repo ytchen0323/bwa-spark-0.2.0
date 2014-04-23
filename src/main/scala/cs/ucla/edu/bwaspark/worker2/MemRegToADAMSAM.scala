@@ -8,6 +8,7 @@ import scala.math.abs
 
 import cs.ucla.edu.bwaspark.datatype._
 import cs.ucla.edu.bwaspark.util.BNTSeqUtil._
+import cs.ucla.edu.bwaspark.util.SWUtil._
 
 object MemRegToADAMSAM {
   val MEM_F_ALL = 0x8
@@ -201,12 +202,12 @@ object MemRegToADAMSAM {
   }
 
   private def bwaGenCigar2(mat: Array[Byte], oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, pacLen: Long, pac: Array[Byte], 
-    queryLen: Int, query_i: Array[Byte], rBeg: Long, rEnd: Long): (Int, Int, Int, String) = {
+    queryLen: Int, query_i: Array[Byte], rBeg: Long, rEnd: Long): (Int, Int, Int, MutableList[CigarSegType]) = {
 
     var numCigar = 0
     var NM = -1
     var score = 0
-    var cigar: String = ""
+    var cigar = new MutableList[CigarSegType]
 
     // reject if negative length or bridging the forward and reverse strand
     if(queryLen <= 0 || rBeg >= rEnd || (rBeg < pacLen && rEnd > pacLen)) (0, 0, 0, cigar)
@@ -238,8 +239,9 @@ object MemRegToADAMSAM {
         if(queryLen == (rEnd - rBeg) && w == 0) {
           // FIXME: due to an issue in mem_reg2aln(), we never come to this block. This does not affect accuracy, but it hurts performance. (in original C implementation)
 
-          //cigar = new Array[Int](1)
-          //cigar = queryLen << 4 | 0
+          val cigarSeg = new CigarSegType
+          cigarSeg.len = queryLen 
+          cigarSeg.op = 0
           numCigar = 1
 
           for(i <- 0 to (queryLen - 1)) 
@@ -256,31 +258,65 @@ object MemRegToADAMSAM {
           val minWidth = abs(rlen - queryLen) + 3
           if(width < minWidth) width = minWidth
           // NW alignment
+          val ret = SWGlobal(queryLen, query, rlen.toInt, rseq, 5, mat, oDel, eDel, oIns, eIns, width.toInt, numCigar, cigar)
+          score = ret._1
+          numCigar = ret._2
           //score = ksw_global2(l_query, query, rlen, rseq, 5, mat, o_del, e_del, o_ins, e_ins, w, n_cigar, &cigar);
         }
        
         // compute NM and MD
         // str.l = str.m = *n_cigar * 4; str.s = (char*)cigar; // append MD to CIGAR   
-        var int2base = ""
+        var int2base = new Array[Char](5)
         var x = 0
         var y = 0
         var u = 0
         var n_mm = 0
         var nGap = 0
 
-        if(rBeg < pacLen) int2base = "ACGTN"
-        else int2base = "TGCAN"        
+        if(rBeg < pacLen) int2base = Array('A', 'C', 'G', 'T', 'N')
+        else int2base = Array('T', 'G', 'C', 'A', 'N')        
 
         for(k <- 0 to (numCigar - 1)) {
-          // cigar = (uint32_t*)str.s;
-          //var op = cigar(k) & 0xf
-          //var len = cigar(k) >> 4
+          val op = cigar(k).op
+          val len = cigar(k).len
           
           // match
-          //if(op == 0) {
-          //
-          //}
+          if(op == 0) {
+            for(i <- 0 to (len - 1)) {
+              if(query(x + i) != rseq(y + i)) {
+                cigar(k).seg += u.toString
+                cigar(k).seg += int2base(rseq(y + i))
+                n_mm += 1
+                u = 0
+              }
+              else u += 1
+            }
+
+            x += len
+            y += len
+          }
+          // deletion
+          else if(op == 2) {
+            // don't do the following if D is the first or the last CIGAR
+            if(k > 0 && k < numCigar - 1) {
+              cigar(k).seg += u.toString
+              cigar(k).seg ++= "^"
+              
+              for(i <- 0 to (len - 1)) cigar(k).seg += int2base(rseq(y + i))
+              
+              u = 0
+              nGap += len
+            }
+
+            y += len
+          }
+          // insertion
+          else if(op == 1) {
+            x += len
+            nGap += len
+          }
         }
+        
         
         (0, 0, 0, cigar)
       }
