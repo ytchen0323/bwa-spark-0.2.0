@@ -104,7 +104,7 @@ object MemChainFilter {
 
       }
       //sort by weight decreasingly
-      chainWrapperArray = chainWrapperArray.sortWith( (a, b) => a.weight > b.weight )
+      chainWrapperArray = chainWrapperArray.sortWith( (a, b) => ((a.weight > b.weight) || (a.weight == b.weight && a.mainChain.pos < b.mainChain.pos) ) )
     
       if (debugLevel > 0) {
         println("The first step: sorting by weight")
@@ -130,8 +130,10 @@ object MemChainFilter {
 
         while (!isOverlap && j < wrappersAfterFilter.length) {
           //judge if there is significant overlap between i and j
-          val beginMax = if (wrappersAfterFilter(j).beg > chainWrapperArray(i).beg) wrappersAfterFilter(j).beg else chainWrapperArray(i).beg
-          val endMin = if (wrappersAfterFilter(j).end > chainWrapperArray(i).end) wrappersAfterFilter(j).end else chainWrapperArray(i).end
+//          val beginMax = if (wrappersAfterFilter(j).beg > chainWrapperArray(i).beg) wrappersAfterFilter(j).beg else chainWrapperArray(i).beg
+//          val endMin = if (wrappersAfterFilter(j).end > chainWrapperArray(i).end) wrappersAfterFilter(j).end else chainWrapperArray(i).end
+          val beginMax = max(wrappersAfterFilter(j).beg, chainWrapperArray(i).beg)
+          val endMin = min(wrappersAfterFilter(j).end, chainWrapperArray(i).end)
 
           //if there is overlap, judge if it has exceeded the threshold
           if (beginMax < endMin) {
@@ -154,11 +156,21 @@ object MemChainFilter {
       }
 
       //get the new chain array
-      var newChainArray = new Array[MemChainType](wrappersAfterFilter.length)
+      var newChainList = new MutableList[MemChainType]()
 
-      for (i <- 0 until newChainArray.length) {
-        newChainArray(i) = wrappersAfterFilter(i).mainChain
+      for (i <- 0 until wrappersAfterFilter.length) {
+        //firstly, insert mainChain
+        newChainList += wrappersAfterFilter(i).mainChain
       }
+
+      for (i <- 0 until wrappersAfterFilter.length) {
+        //secondly, insert secondChain if it is avaiable and does not appear before
+        if (wrappersAfterFilter(i).secondChain != null && !newChainList.contains(wrappersAfterFilter(i).secondChain)) {
+          newChainList += wrappersAfterFilter(i).secondChain
+          if (debugLevel > 0) println("Valid secondChain found")
+        }
+      }
+      val newChainArray = newChainList.toArray
     
       if (debugLevel > 0) {
         println("Chains after filtering:")
