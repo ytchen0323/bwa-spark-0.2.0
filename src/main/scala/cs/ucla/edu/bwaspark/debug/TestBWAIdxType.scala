@@ -25,15 +25,16 @@ object TestWorker1 {
     bwaMemOpt.load()
 
     //loading reads
-    //val rawData = "TTACTCGTGATGTGTGTCCTCAACTAAAGGAGTAGAACTTTTCTTTTCATAGAGAAGTTTTGAAACGCTCTTTTTGTGGAATCTGCAAGTGGATATTTGGC"
+//    val rawData = "TTACTCGTGATGTGTGTCCTCAACTAAAGGAGTAGAACTTTTCTTTTCATAGAGAAGTTTTGAAACGCTCTTTTTGTGGAATCTGCAAGTGGATATTTGGC" //read 0
+//    val rawData = "ATAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCGTAACCCTAACCGTAACCCTCACCCTAACCATAAC" //read 1
     val rawData = "TTAGGGTTAGGGTTAGGGTTAGGGTTAGGGTTAGGTTAAGGGTAAGGGTTAGGGTTAGGGTTAGGTTTGGGTTAGGGTTAGGGTTAGGGTTAGGGTTAGGG"
-    val goldenRef = "33013123203232323113100130002202302001333313333103020200233332000121313333323220031321002322030333221"
+    //val goldenRef = "33013123203232323113100130002202302001333313333103020200233332000121313333323220031321002322030333221"
     val seq: Array[Int] = rawData.map(ele => ele.toInt).toArray 
 
-    debugLevel = 0
+    debugLevel = 1
 
     //test bwaMemWork1
-    val aligns = bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq)
+//    val aligns = bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq)
 
     //test the first step: memChain
       def locusEncode(locus: Int): Byte = {
@@ -57,7 +58,7 @@ object TestWorker1 {
     println()
 
 
-//    val chains = generateChains(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns.l_pac, read.length, read)
+    val chains = generateChains(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns.l_pac, read.length, read)
 
     def readChainsFromFile(filename: String): Array[MemChainType] = {
 
@@ -81,7 +82,7 @@ object TestWorker1 {
 //    val chainsFromFile = readChainsFromFile("/home/pengwei/genomics/OutputFiles/chains.log")
 
 //    val chainsFiltered = memChainFilter(bwaMemOpt, chainsFromFile)
-//    val chainsFiltered = memChainFilter(bwaMemOpt, chains)
+    val chainsFiltered = memChainFilter(bwaMemOpt, chains)
 
   }
 }
