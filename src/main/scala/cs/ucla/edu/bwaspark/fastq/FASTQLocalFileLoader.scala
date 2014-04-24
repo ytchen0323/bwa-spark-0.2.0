@@ -1,4 +1,4 @@
-package cs.ucla.edu.bwaspark
+package cs.ucla.edu.bwaspark.fastq
 
 import java.io.{File, FileReader, BufferedReader, IOException, FileNotFoundException}
 import java.nio.{ByteBuffer, CharBuffer}

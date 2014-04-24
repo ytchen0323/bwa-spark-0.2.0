@@ -1,4 +1,4 @@
-package cs.ucla.edu.bwaspark;
+package cs.ucla.edu.bwaspark.fastq;
 
 import cs.ucla.edu.avro.fastq.*;
 import org.apache.avro.io.*;

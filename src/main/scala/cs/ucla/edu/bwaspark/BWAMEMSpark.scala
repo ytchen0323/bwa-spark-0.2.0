@@ -11,6 +11,7 @@ import cs.ucla.edu.bwaspark.datatype._
 import cs.ucla.edu.bwaspark.worker1.BWAMemWorker1._
 import cs.ucla.edu.bwaspark.worker2.BWAMemWorker2._
 import cs.ucla.edu.bwaspark.debug.DebugFlag._
+import cs.ucla.edu.bwaspark.fastq._
 
 import java.io.FileReader
 import java.io.BufferedReader
@@ -70,7 +71,7 @@ object BWAMEMSpark {
     var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq")
 
     val regsAllReads = seqs.map( seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq) )
-
+/*
     // print regs for all reads
     var readNum = 0
     regsAllReads.foreach(read => {
@@ -85,7 +86,7 @@ object BWAMEMSpark {
       println("##############################################################")
       readNum += 1
     } )
-
+*/
     var testReads = new MutableList[testRead]
     for(i <- 0 to (seqs.length - 1)) {
       var read = new testRead

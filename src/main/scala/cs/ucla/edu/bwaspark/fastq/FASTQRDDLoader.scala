@@ -1,4 +1,4 @@
-package cs.ucla.edu.bwaspark
+package cs.ucla.edu.bwaspark.fastq
 
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
