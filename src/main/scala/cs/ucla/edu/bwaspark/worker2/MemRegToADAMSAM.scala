@@ -199,9 +199,71 @@ object MemRegToADAMSAM {
           i += 1
         } while(i < 3 && score < reg.trueScore - opt.a)
 
-        // NOTE!!!: Need to be implemented below
       }
 
+      var pos: Long = 0
+      var isRev: Int = 0
+ 
+      if(rb < bns.l_pac) {
+        val ret = bnsDepos(bns, rb)
+        pos = ret._1
+        isRev = ret._2
+      }
+      else {
+        val ret = bnsDepos(bns, re - 1)
+        pos = ret._1
+        isRev = ret._2
+      }
+
+      aln.isRev = isRev.toByte
+
+      // squeeze out leading or trailing deletions
+      if(aln.nCigar > 0) {
+        if(aln.cigar.cigarSegs(0).op == 2) {
+          pos += aln.cigar.cigarSegs(0).len
+          aln.cigar.cigarSegs = aln.cigar.cigarSegs.drop(1)
+          aln.nCigar -= 1
+        }
+        else if(aln.cigar.cigarSegs(aln.nCigar - 1).op == 2) {            
+          aln.cigar.cigarSegs = aln.cigar.cigarSegs.dropRight(1)
+          aln.nCigar -= 1
+        }
+      }
+
+      // add clipping to CIGAR
+      if(qb != 0 || qe != seqLen) {
+        var clip5 = 0
+        var clip3 = 0
+
+        if(isRev > 0) clip5 = seqLen - qe
+        else clip5 = qb
+
+        if(isRev > 0) clip3 = qb
+        else clip3 = seqLen - qe
+
+        if(clip5 > 0) {
+          val cigarSeg = new CigarSegType
+          cigarSeg.op = 3
+          cigarSeg.len = clip5
+          aln.cigar.cigarSegs.+=:(cigarSeg)
+          aln.nCigar += 1
+        }
+        
+        if(clip3 > 0) {
+          val cigarSeg = new CigarSegType
+          cigarSeg.op = 3
+          cigarSeg.len = clip3
+          aln.cigar.cigarSegs += cigarSeg
+          aln.nCigar += 1
+        }
+      }
+
+      aln.rid = bnsPosToRid(bns, pos)
+      aln.pos = pos - bns.anns(aln.rid).offset
+      aln.score = reg.score
+      if(reg.sub > reg.csub) aln.sub = reg.sub
+      else aln.sub = reg.csub
+      
       aln
     }
   }
@@ -268,24 +330,76 @@ object MemRegToADAMSAM {
       var cb = ra.offset
       if(isRev > 0) cb = (bns.l_pac << 1) - (ra.offset + ra.len)
       var ce = cb + ra.len   // chr end
+      var qBegRet = qBeg
+      var qEndRet = qEnd
+      var rBegRet = rBeg
+      var rEndRet = rEnd
 
       // fix is needed
       if(cb > rBeg || ce < rEnd) {
+        if(cb < rBeg) cb = rBeg
+        if(ce > rEnd) ce = rEnd
+
         var queryArr: Array[Byte] = new Array[Byte](qEnd - qBeg)
         // make a copy to pass into bwaGenCigar2 
         // if there is performance issue later, we may modify the underlying implementation
         for(i <- 0 to (qEnd - qBeg - 1)) queryArr(i) = query(qBeg + i)
 
         val ret = bwaGenCigar2(mat, oDel, eDel, oIns, eIns, w, bns.l_pac, pac, qEnd - qBeg, queryArr, rBeg, rEnd)
-        //val numCigar = ret._2
-        //val cigar = ret._4
+        val numCigar = ret._2
+        val cigar = ret._4
 
+        var x = rBeg
+        var y = qBeg
+
+        breakable {
+          for(i <- 0 to (numCigar - 1)) {
+            val op = cigar.cigarSegs(i).op
+            val len = cigar.cigarSegs(i).len
+
+            if(op == 0) {
+              if(x <= cb && cb < x + len) {
+                qBegRet = (y + (cb - x)).toInt
+                rBegRet = cb
+              }
+              
+              if(x < ce && ce <= x + len) {
+                qEndRet = (y + (ce - x)).toInt
+                rEndRet = ce
+                break
+              }
+              else {
+                x += len
+                y += len
+              }
+            }
+            else if(op == 1) {
+              y += len
+            } 
+            else if(op == 2) {
+              if(x <= cb && cb < x + len) {
+                qBegRet = y
+                rBegRet = x + len
+              }
+              
+              if(x < ce && ce <= x + len) {
+                qEndRet = y
+                rEndRet = x
+              }
+              else x += len
+            }
+            else {
+              println("[Error] Should not be here!!!")
+              assert(false, "in bwaFixXref2()")
+            }
+          }
+        }
         // NOTE!!!: Need to be implemented!!! temporarily skip this for loop
       }
     
       var iden = 0
-      if(qBeg == qEnd || rBeg == rEnd) iden = -2
-      (qBeg, qEnd, rBeg, rEnd, iden)
+      if(qBegRet == qEndRet || rBegRet == rEndRet) iden = -2
+      (qBegRet, qEndRet, rBegRet, rEndRet, iden)
     }
 
   }
@@ -327,7 +441,7 @@ object MemRegToADAMSAM {
         // no gap; no need to do DP
         if(queryLen == (rEnd - rBeg) && w == 0) {
           // FIXME: due to an issue in mem_reg2aln(), we never come to this block. This does not affect accuracy, but it hurts performance. (in original C implementation)
-          println("ENTER!!!")
+          //println("ENTER!!!")
           var cigarSeg = new CigarSegType
           cigarSeg.len = queryLen 
           cigarSeg.op = 0
@@ -351,8 +465,6 @@ object MemRegToADAMSAM {
           val ret = SWGlobal(queryLen, query, rlen.toInt, rseq, 5, mat, oDel, eDel, oIns, eIns, width.toInt, numCigar, cigar.cigarSegs)
           score = ret._1
           numCigar = ret._2
-          println("cigarSegs.length: " + cigar.cigarSegs.length)
-          //score = ksw_global2(l_query, query, rlen, rseq, 5, mat, o_del, e_del, o_ins, e_ins, w, n_cigar, &cigar);
         }
        
         // compute NM and MD
