@@ -18,16 +18,18 @@ import java.io.BufferedReader
 
 object BWAMEMSpark {
   // load reads from the FASTQ file (for testing use)
-  private def loadFASTQSeqs(fileName: String): MutableList[String] = {
+  private def loadFASTQSeqs(fileName: String, readNum: Int): Array[String] = {
     
     val reader = new BufferedReader(new FileReader(fileName))
     var line = reader.readLine
-    var i = 0    
-    var seqs = new MutableList[String]
+    var i = 0
+    var readIdx = 0    
+    var seqs = new Array[String](readNum / 4)
 
     while(line != null) {
       if(i % 4 == 1) {
-        seqs += line
+        seqs(readIdx) = line
+        readIdx += 1
       }
       i += 1
       line = reader.readLine
@@ -71,8 +73,8 @@ object BWAMEMSpark {
     //loading reads
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read.fq")
     println("Load FASTQ files")
-    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq")
-    var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_10Mreads.fq")
+    var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq", 80)
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_10Mreads.fq", 10000000)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_5reads_err.fq")
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_err.fq")
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_15000reads.fq")
@@ -80,15 +82,21 @@ object BWAMEMSpark {
 
     //val regsAllReads = seqs.map( seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq) )
     //println("Processing")
+    
     var i = 0
+    //val regsAllReads = seqs.map( {
     val regsAllReads = seqs.foreach( {
       seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq) 
       //if(i >= 14700) debugLevel = 1
       //if(i >= 14700) println(i)
       //println("Read: " + i)
-      i += 1
+      //i += 1
       if((i % 10000) == 0) println(i)
       } )
+
+
+//    val regsAllReads = seqs.map(seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq))
+
 /*
     // print regs for all reads
     var readNum = 0
@@ -105,6 +113,7 @@ object BWAMEMSpark {
       readNum += 1
     } )
 */
+
 /*
     var testReads = new MutableList[testRead]
     for(i <- 0 to (seqs.length - 1)) {

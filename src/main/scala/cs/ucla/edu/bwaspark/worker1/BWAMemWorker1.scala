@@ -66,7 +66,6 @@ object BWAMemWorker1 {
         // build the references of the seeds in each chain
         var totalSeedNum = 0
         chainsFiltered.foreach(chain => {
-          chain.seedsRefArray = chain.seeds.toArray 
           totalSeedNum += chain.seeds.length
           } )
 

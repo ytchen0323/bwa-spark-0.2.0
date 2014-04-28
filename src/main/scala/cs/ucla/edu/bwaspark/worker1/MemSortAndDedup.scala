@@ -1,8 +1,6 @@
 package cs.ucla.edu.bwaspark.worker1
 
 import scala.util.control.Breaks._
-import scala.List
-import scala.collection.mutable.MutableList
 
 import cs.ucla.edu.bwaspark.datatype._
 
