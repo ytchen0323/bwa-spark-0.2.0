@@ -319,6 +319,9 @@ object MemChain {
     else {
       val itr = chainTree.iterator
       val chains = new Array[MemChainType](chainTree.size).map(ele => itr.next)
+      chains.foreach(ele => { 
+        ele.seedsRefArray = ele.seeds.toArray
+        } )
       chains
     }
   }
