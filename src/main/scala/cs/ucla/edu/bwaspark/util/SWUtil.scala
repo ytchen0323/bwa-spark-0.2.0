@@ -283,12 +283,12 @@ object SWUtil {
         var t = m - oeDel
         e -= eDel
         if(e > t) d |= (1 << 2)
-        else d = 0
+        else d |= 0
         if(e < t) e = t
         eh(j).e = e
         t = m - oeIns
         if(f > t) d |= (2 << 4)  // if we want to halve the memory, use one bit only, instead of two (in original C implementation)
-        else d = 0
+        else d |= 0
         if(f < t) f = t
         z(zPtr + j - beg) = d.toByte  // z[i,j] keeps h for the current cell and e/f for the next cell
       }
@@ -304,13 +304,12 @@ object SWUtil {
     var which = 0
     // (i,k) points to the last cell
     i = tLen - 1
-    k = 0
     if(i + w + 1 < qLen) k = i + w
     else k = qLen - 1
 
     while(i >= 0 && k >= 0) {
-      if(i > w) which = z(i * nCol + (k - (i - w))) >> (which << 1) & 3
-      else which = z(i * nCol + k) >> (which << 1) & 3
+      if(i > w) which = z(i * nCol + (k - (i - w))) >>> (which << 1) & 3
+      else which = z(i * nCol + k) >>> (which << 1) & 3
 
       if(which == 0) { 
         numCigarTmp = pushCigar(numCigarTmp, cigarSegs, 0, 1) 

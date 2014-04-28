@@ -88,7 +88,9 @@ object MemChainFilter {
     
     //if there is less than one chain in chain array
     //we do not need to filter it at all
-    if (chains.length <= 1) chains
+
+    if (chains == null) null
+    else if (chains.length <= 1) chains
 
     else {
       
@@ -114,13 +116,18 @@ object MemChainFilter {
     
 
       //second step: filtering
-      var wrappersAfterFilter = new MutableList[MemChainWrapperType]()
+      //var wrappersAfterFilter = new MutableList[MemChainWrapperType]()
+      var wrappersAfterFilter = new Array[MemChainWrapperType](chainWrapperArray.length)
+      var idx = 0
       
       //the first chain in the new chain array will automatically be added
-      wrappersAfterFilter += chainWrapperArray(0)
+      wrappersAfterFilter(idx) = chainWrapperArray(0)
+      idx += 1
       //traverse all the other chains, compare them with the chains in the after filter array
       //if there is significant overlap, should be filtered
       for (i <- 1 until chainWrapperArray.length) {
+
+        if (debugLevel > 0) println("The i-loop index for filtering is: " + i)
 
         //traverse all the chains in the result array
         //if significant overlap found, break
@@ -128,7 +135,8 @@ object MemChainFilter {
         var isOverlap = false
         var j = 0
 
-        while (!isOverlap && j < wrappersAfterFilter.length) {
+        while (!isOverlap && j < idx) {
+//          if (debugLevel > 0) println("The j-loop index for " + i + "th i-loop filtering is: " + j)
           //judge if there is significant overlap between i and j
 //          val beginMax = if (wrappersAfterFilter(j).beg > chainWrapperArray(i).beg) wrappersAfterFilter(j).beg else chainWrapperArray(i).beg
 //          val endMin = if (wrappersAfterFilter(j).end > chainWrapperArray(i).end) wrappersAfterFilter(j).end else chainWrapperArray(i).end
@@ -151,19 +159,19 @@ object MemChainFilter {
 
         }
         //if not isOverlap, then add the chain to result array
-        if (!isOverlap) wrappersAfterFilter += chainWrapperArray(i)
+        if (!isOverlap) {wrappersAfterFilter(idx) = chainWrapperArray(i); idx += 1}
 
       }
 
       //get the new chain array
       var newChainList = new MutableList[MemChainType]()
 
-      for (i <- 0 until wrappersAfterFilter.length) {
+      for (i <- 0 until idx) {
         //firstly, insert mainChain
         newChainList += wrappersAfterFilter(i).mainChain
       }
 
-      for (i <- 0 until wrappersAfterFilter.length) {
+      for (i <- 0 until idx) {
         //secondly, insert secondChain if it is avaiable and does not appear before
         if (wrappersAfterFilter(i).secondChain != null && !newChainList.contains(wrappersAfterFilter(i).secondChain)) {
           newChainList += wrappersAfterFilter(i).secondChain

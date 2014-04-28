@@ -33,7 +33,7 @@ object BWAMEMSpark {
       line = reader.readLine
     } 
 
-    seqs.foreach(println(_))
+    //seqs.foreach(println(_))
     seqs
   }
 
@@ -56,11 +56,13 @@ object BWAMEMSpark {
 
 
     //loading index files
+    println("Load Index Files")
     val bwaIdx = new BWAIdxType
     val prefix = "/home/pengwei/genomics/ReferenceMetadata/human_g1k_v37.fasta"
     bwaIdx.load(prefix, 0)
 
     //loading BWA MEM options
+    println("Load BWA-MEM options")
     val bwaMemOpt = new MemOptType
     bwaMemOpt.load
 
@@ -68,9 +70,25 @@ object BWAMEMSpark {
 
     //loading reads
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read.fq")
-    var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq")
+    println("Load FASTQ files")
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq")
+    var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_10Mreads.fq")
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_5reads_err.fq")
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_err.fq")
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_15000reads.fq")
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/ERR013140_1.filt.fastq")
 
-    val regsAllReads = seqs.map( seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq) )
+    //val regsAllReads = seqs.map( seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq) )
+    //println("Processing")
+    var i = 0
+    val regsAllReads = seqs.foreach( {
+      seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq) 
+      //if(i >= 14700) debugLevel = 1
+      //if(i >= 14700) println(i)
+      //println("Read: " + i)
+      i += 1
+      if((i % 10000) == 0) println(i)
+      } )
 /*
     // print regs for all reads
     var readNum = 0
@@ -87,6 +105,7 @@ object BWAMEMSpark {
       readNum += 1
     } )
 */
+/*
     var testReads = new MutableList[testRead]
     for(i <- 0 to (seqs.length - 1)) {
       var read = new testRead
@@ -96,5 +115,6 @@ object BWAMEMSpark {
     }
 
     testReads.map(read => bwaMemWorker2(bwaMemOpt, read.regs, bwaIdx.bns, bwaIdx.pac, read.seq, 0) )
+*/
   } 
 }

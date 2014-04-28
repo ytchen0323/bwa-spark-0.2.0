@@ -22,7 +22,7 @@ object BWAMemWorker1 {
                     pes: Array[MemPeStat], //pes array
                     len: Int, //the length of the read
                     seq: String //a read
-                    ): MutableList[MemAlnRegType] = { //all possible alignment  
+                    ): Array[MemAlnRegType] = { //all possible alignment  
 
     //for paired alignment, to add
     //!!!to add!!!
@@ -48,6 +48,7 @@ object BWAMemWorker1 {
         }
       }
 
+      //println(seq)
       val read: Array[Byte] = seq.toCharArray.map(ele => locusEncode(ele))
 
       //first step: generate all possible MEM chains for this read
@@ -56,21 +57,40 @@ object BWAMemWorker1 {
       //second step: filter chains
       val chainsFiltered = memChainFilter(opt, chains)
 
-      //third step: for each chain, from chain to aligns
-      var regs = new MutableList[MemAlnRegType]
-
       //var alignRegArray: MutableList[MemAlnRegType] = null
 
-      for (i <- 0 until chainsFiltered.length) {
-        //alignRegArray = memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered(i), regs)
-        regs = memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered(i), regs)
+      if (chainsFiltered == null) 
+        null
+      else {
+
+        // build the references of the seeds in each chain
+        var totalSeedNum = 0
+        chainsFiltered.foreach(chain => {
+          chain.seedsRefArray = chain.seeds.toArray 
+          totalSeedNum += chain.seeds.length
+          } )
+
+        //third step: for each chain, from chain to aligns
+        var regArray = new MemAlnRegArrayType
+        regArray.maxLength = totalSeedNum
+        regArray.regs = new Array[MemAlnRegType](totalSeedNum)
+
+        for (i <- 0 until chainsFiltered.length) {
+          //alignRegArray = memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered(i), regs)
+          //regArray = memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered(i), regArray)
+          memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered(i), regArray)
+        }
+
+        regArray.regs = regArray.regs.filter(r => (r != null))
+        regArray.maxLength = regArray.regs.length
+        assert(regArray.curLength == regArray.maxLength, "[Error] After filtering array elements")
+        //last step: sorting and deduplication
+
+        //val pureRegArray = memSortAndDedup(alignRegArray, opt.maskLevelRedun)
+        val pureRegArray = memSortAndDedup(regArray, opt.maskLevelRedun)
+
+        pureRegArray.regs
       }
-      //last step: sorting and deduplication
-
-      //val pureRegArray = memSortAndDedup(alignRegArray, opt.maskLevelRedun)
-      val pureRegArray = memSortAndDedup(regs, opt.maskLevelRedun)
-
-      pureRegArray
     }
     else {
       assert (false)

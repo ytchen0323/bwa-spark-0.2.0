@@ -144,8 +144,9 @@ object MemChain {
     if (debugLevel > 0) {
       println("generateChainTree: finish the 1st smemNext")
     }
-
+    var idx = 0;
     while ( bwtIntvOnPoint != null ) {
+      if (debugLevel > 0) {println("It is the " + idx + "th times for the while loop"); idx += 1}
       //traverse all the seeds
       for (i <- 0 until bwtIntvOnPoint.length) {
 
@@ -163,6 +164,7 @@ object MemChain {
           for (j <- 0 until bwtIntvOnPoint(i).s.toInt) {
 
             //prepare for generating a new seed
+            if (debugLevel > 0) println("The loop index for j-loop is: " + j)
             if (debugLevel > 0) println("The parameter for calling suffixArrayPos2ReferencePos: " + (bwtIntvOnPoint(i).k + j))
             var rBeg = suffixArrayPos2ReferencePos(smemItr.bwt, bwtIntvOnPoint(i).k + j)
             var qBeg = bwtIntvOnPoint(i).startPoint
@@ -189,14 +191,14 @@ object MemChain {
                   //because lower.pos < tmpChain.pos
                   //having refPoint + 1 to handle if lower.pos == tmpChain.pos
                   val tmpChain = new MemChainType(refPoint + 1, null)
-                  if (debugLevel > 0) {
-                    println("The tmpChain's refPoint is: " + (refPoint+1))
-                    println("Display the current chain tree")
-                    var itr = chainTree.iterator()
-                    while (itr.hasNext) {
-                      itr.next().print()
-                    }
-                  }
+                  //if (debugLevel > 0) {
+                  //  println("The tmpChain's refPoint is: " + (refPoint+1))
+                  //  println("Display the current chain tree")
+                  //  var itr = chainTree.iterator()
+                  //  while (itr.hasNext) {
+                  //    itr.next().print()
+                  //  }
+                  //}
                   val res = chainTree.lower(tmpChain)
                   val tmp = chainTree.higher(tmpChain)
                   if (debugLevel > 0) {

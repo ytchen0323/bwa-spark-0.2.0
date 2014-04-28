@@ -11,6 +11,7 @@ class MemSeedType(rbeg_i: Long, qbeg_i: Int, len_i: Int) {
 class MemChainType(pos_i: Long, seeds_i: MutableList[MemSeedType]) {
   var pos: Long = pos_i
   var seeds: MutableList[MemSeedType] = seeds_i
+  var seedsRefArray: Array[MemSeedType] = _
 
   def print() {
     println("The reference position of the chain: " + pos)

@@ -113,15 +113,14 @@ object MemChainToAlign {
     *  @param pac the PAC array
     *  @param queryLen the query length (read length)
     *  @param chain one of the mem chains of the read
-    *  @param regs the input alignment registers, which are the registers from the output of the previous call on MemChainToAln().
+    *  @param regArray the input alignment registers, which are the registers from the output of the previous call on MemChainToAln().
     *              This parameter is updated iteratively. The number of iterations is the number of chains of this read.
     */
   def memChainToAln(opt: MemOptType, pacLen: Long, pac: Array[Byte], queryLen: Int, query: Array[Byte], 
-    chain: MemChainType, regs: MutableList[MemAlnRegType]): MutableList[MemAlnRegType] = {
+    chain: MemChainType, regArray: MemAlnRegArrayType) {
 
     var rmax: Array[Long] = new Array[Long](2)   
     var srt: Array[SRTType] = new Array[SRTType](chain.seeds.length) 
-    var alnRegs = regs
     var aw: Array[Int] = new Array[Int](2)
 
  
@@ -143,22 +142,22 @@ object MemChainToAlign {
 
     // Setup the value of srt array
     for(i <- 0 to (chain.seeds.length - 1)) 
-      srt(i) = new SRTType(chain.seeds(i).len, i)
+      srt(i) = new SRTType(chain.seedsRefArray(i).len, i)
 
     srt = srt.sortBy(s => s.len)
     //srt.map(s => println("(" + s.len + ", " + s.index + ")") )  // debugging message
 
     // The main for loop
     for(k <- (chain.seeds.length - 1) to 0 by -1) {
-      val seed = chain.seeds( srt(k).index )
-      var i = testExtension(opt, seed, alnRegs)
+      val seed = chain.seedsRefArray( srt(k).index )
+      var i = testExtension(opt, seed, regArray)
      
       var checkoverlappingRet = -1
 
-      if(i < alnRegs.length) checkoverlappingRet = checkOverlapping(k + 1, seed, chain, srt)
+      if(i < regArray.curLength) checkoverlappingRet = checkOverlapping(k + 1, seed, chain, srt)
       
       // no overlapping seeds; then skip extension
-      if((i < alnRegs.length) && (checkoverlappingRet == chain.seeds.length)) {
+      if((i < regArray.curLength) && (checkoverlappingRet == chain.seeds.length)) {
         srt(k).index = 0  // mark that seed extension has not been performed
       }
       else {
@@ -200,13 +199,13 @@ object MemChainToAlign {
         if(aw(0) > aw(1)) reg.width = aw(0)
         else reg.width = aw(1)
 
-        // push the current align reg into the output list
-        alnRegs += reg
+        // push the current align reg into the output array
+        regArray.regs(regArray.curLength) = reg
+        regArray.curLength += 1
       }
 
     }
 
-    alnRegs
   }
 
   /**
@@ -264,7 +263,7 @@ object MemChainToAlign {
     // crossing the forward-reverse boundary; then choose one side
     if(rmax(0) < pacLen && pacLen < rmax(1)) {
       // this works because all seeds are guaranteed to be on the same strand
-      if(chain.seeds(0).rBeg < pacLen) rmax(1) = pacLen
+      if(chain.seedsRefArray(0).rBeg < pacLen) rmax(1) = pacLen
       else rmax(0) = pacLen
     }
 
@@ -277,23 +276,24 @@ object MemChainToAlign {
     *
     *  @param opt the input opt object
     *  @param seed the input seed
-    *  @param regs the current align registers
+    *  @param regArray the current align registers
     */
-  private def testExtension(opt: MemOptType, seed: MemSeedType, regs: MutableList[MemAlnRegType]): Int = {
+  private def testExtension(opt: MemOptType, seed: MemSeedType, regArray: MemAlnRegArrayType): Int = {
     var rDist: Long = -1 
     var qDist: Int = -1
     var maxGap: Int = -1
     var minDist: Int = -1
     var w: Int = -1
-    var breakIdx: Int = regs.length
+    var breakIdx: Int = regArray.maxLength
 
     breakable {
-      for(i <- 0 to (regs.length - 1)) {
+      for(i <- 0 to (regArray.curLength - 1)) {
         
-        if(seed.rBeg >= regs(i).rBeg && (seed.rBeg + seed.len) <= regs(i).rEnd && seed.qBeg >= regs(i).qBeg && (seed.qBeg + seed.len) <= regs(i).qEnd) {
+        if(seed.rBeg >= regArray.regs(i).rBeg && (seed.rBeg + seed.len) <= regArray.regs(i).rEnd && 
+           seed.qBeg >= regArray.regs(i).qBeg && (seed.qBeg + seed.len) <= regArray.regs(i).qEnd) {
           // qDist: distance ahead of the seed on query; rDist: on reference
-          qDist = seed.qBeg - regs(i).qBeg
-          rDist = seed.rBeg - regs(i).rBeg
+          qDist = seed.qBeg - regArray.regs(i).qBeg
+          rDist = seed.rBeg - regArray.regs(i).rBeg
 
           if(qDist < rDist) minDist = qDist 
           else minDist = rDist.toInt
@@ -312,8 +312,8 @@ object MemChainToAlign {
           }
 
           // the codes below are similar to the previous four lines, but this time we look at the region behind
-          qDist = regs(i).qEnd - (seed.qBeg + seed.len)
-          rDist = regs(i).rEnd - (seed.rBeg + seed.len)
+          qDist = regArray.regs(i).qEnd - (seed.qBeg + seed.len)
+          rDist = regArray.regs(i).rEnd - (seed.rBeg + seed.len)
           
           if(qDist < rDist) minDist = qDist
           else minDist = rDist.toInt
@@ -349,7 +349,7 @@ object MemChainToAlign {
     breakable {
       for(i <- startIdx to (chain.seeds.length - 1)) {
         if(srt(i).index != 0) {
-          val targetSeed = chain.seeds(srt(i).index)
+          val targetSeed = chain.seedsRefArray(srt(i).index)
 
           // only check overlapping if t is long enough; TODO: more efficient by early stopping
           // NOTE: the original implementation may be not correct!!!
@@ -507,11 +507,11 @@ object MemChainToAlign {
     
     for(i <- 0 to (chain.seeds.length - 1)) {
       // seed fully contained
-      if(chain.seeds(i).qBeg >= reg.qBeg && 
-         chain.seeds(i).qBeg + chain.seeds(i).len <= reg.qEnd &&
-         chain.seeds(i).rBeg >= reg.rBeg &&
-         chain.seeds(i).rBeg + chain.seeds(i).len <= reg.rEnd)
-        seedcov += chain.seeds(i).len   // this is not very accurate, but for approx. mapQ, this is good enough
+      if(chain.seedsRefArray(i).qBeg >= reg.qBeg && 
+         chain.seedsRefArray(i).qBeg + chain.seedsRefArray(i).len <= reg.qEnd &&
+         chain.seedsRefArray(i).rBeg >= reg.rBeg &&
+         chain.seedsRefArray(i).rBeg + chain.seedsRefArray(i).len <= reg.rEnd)
+        seedcov += chain.seedsRefArray(i).len   // this is not very accurate, but for approx. mapQ, this is good enough
     }
 
     seedcov

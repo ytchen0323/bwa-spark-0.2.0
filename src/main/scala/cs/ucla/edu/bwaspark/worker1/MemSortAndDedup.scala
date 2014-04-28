@@ -11,16 +11,17 @@ object MemSortAndDedup {
     *  Sort the MemAlnRegs according to the given order
     *  and remove the redundant MemAlnRegs
     *  
-    *  @param regsIn alignment registers, which are the output of chain to alignment (after memChainToAln() is applied)
+    *  @param regArray alignment registers, which are the output of chain to alignment (after memChainToAln() is applied)
     *  @param maskLevelRedun mask level of redundant alignment registers (from MemOptType object)
     */
-  def memSortAndDedup(regsIn: MutableList[MemAlnRegType], maskLevelRedun: Float): MutableList[MemAlnRegType] = {
-    if(regsIn.length <= 1) {
-      regsIn
+  def memSortAndDedup(regArray: MemAlnRegArrayType, maskLevelRedun: Float): MemAlnRegArrayType = {
+    if(regArray.curLength <= 1) {
+      regArray
     } 
     else {
       //println("before dedup, n: " + regsIn.length)
-      var regs = regsIn.sortBy(_.rEnd)
+      var regs = regArray.regs.sortBy(_.rEnd)
+      //var regs = regsIn.sortBy(r => (r.rEnd, r.rBeg))
 /*
       var j = 0
       regs.foreach(r => {
@@ -53,17 +54,13 @@ object MemSortAndDedup {
                 if(regs(j).qEnd - regs(j).qBeg < regs(i).qEnd - regs(i).qBeg) mq = regs(j).qEnd - regs(j).qBeg
                 else mq = regs(i).qEnd - regs(i).qBeg
                 // one of the hits is redundant
-                //if(or.toFloat > maskLevelRedun * mr && oq.toFloat > maskLevelRedun * mq) {
                 if(or > maskLevelRedun * mr && oq > maskLevelRedun * mq) {
                   if(regs(i).score < regs(j).score) {
                     regs(i).qEnd = regs(i).qBeg
-                    println(i + " " + or + " " + oq)
                     break
                   }
-                  else {
+                  else 
                     regs(j).qEnd = regs(j).qBeg
-                    println(j + " " + or + " " + oq)
-                  }
                 }
               }             
  
@@ -85,7 +82,20 @@ object MemSortAndDedup {
         
       regs = regs.filter(r => (r.qEnd > r.qBeg))
       //println("2nd dedup, n: " + regs.length)
-      regs
+/*
+      j = 0
+      regs.foreach(r => {
+        print("Reg " + j + "(")
+        print(r.rBeg + ", " + r.rEnd + ", " + r.qBeg + ", " + r.qEnd + ", " + r.score + ", " + r.trueScore + ", ")
+        println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ")")
+        j += 1
+        } )
+      println
+*/    
+      regArray.curLength = regs.length 
+      regArray.maxLength = regs.length
+      regArray.regs = regs 
+      regArray
     }
   }
 }
