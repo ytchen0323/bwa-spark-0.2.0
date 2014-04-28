@@ -31,20 +31,20 @@ object MemChainFilter {
     var curQueryEnd = 0
     var weightQuery = 0
     //get the scope of query start->end
-    for (i <- 0 until chain.seeds.length) {
+    for (i <- 0 until chain.seedsRefArray.length) {
       //if a seed is entirely behind the previous query end
       //1)weight += length of this seed
       //2)current end = the end of this seed
-      if (chain.seeds(i).qBeg >= curQueryEnd) {
-        weightQuery += chain.seeds(i).len
-        curQueryEnd = chain.seeds(i).qBeg + chain.seeds(i).len
+      if (chain.seedsRefArray(i).qBeg >= curQueryEnd) {
+        weightQuery += chain.seedsRefArray(i).len
+        curQueryEnd = chain.seedsRefArray(i).qBeg + chain.seedsRefArray(i).len
       }
       //if there is overlap, but the seed extends behind the previous query end
       //1)weight += the extended part
       //2)current end = the end of this seed
-      else if (chain.seeds(i).qBeg + chain.seeds(i).len > curQueryEnd) {
-        weightQuery += (chain.seeds(i).qBeg + chain.seeds(i).len - curQueryEnd)
-        curQueryEnd = chain.seeds(i).qBeg + chain.seeds(i).len
+      else if (chain.seedsRefArray(i).qBeg + chain.seedsRefArray(i).len > curQueryEnd) {
+        weightQuery += (chain.seedsRefArray(i).qBeg + chain.seedsRefArray(i).len - curQueryEnd)
+        curQueryEnd = chain.seedsRefArray(i).qBeg + chain.seedsRefArray(i).len
       }
       //else, do nothing
     }
@@ -52,20 +52,20 @@ object MemChainFilter {
     var curRefEnd = 0l
     var weightRef = 0
     //get the scope of query start->end
-    for (i <- 0 until chain.seeds.length) {
+    for (i <- 0 until chain.seedsRefArray.length) {
       //if a seed is entirely behind the previous reference end
       //1)weight += length of this seed
       //2)current end = the end of this seed
-      if (chain.seeds(i).rBeg >= curRefEnd) {
-        weightRef += chain.seeds(i).len
-        curRefEnd = chain.seeds(i).rBeg + chain.seeds(i).len
+      if (chain.seedsRefArray(i).rBeg >= curRefEnd) {
+        weightRef += chain.seedsRefArray(i).len
+        curRefEnd = chain.seedsRefArray(i).rBeg + chain.seedsRefArray(i).len
       }
       //if there is overlap, but the seed extends behind the previous reference end
       //1)weight += the extended part
       //2)current end = the end of this seed
-      else if (chain.seeds(i).rBeg + chain.seeds(i).len > curRefEnd) {
-        weightRef += (chain.seeds(i).rBeg + chain.seeds(i).len - curRefEnd).toInt
-        curRefEnd = chain.seeds(i).rBeg + chain.seeds(i).len
+      else if (chain.seedsRefArray(i).rBeg + chain.seedsRefArray(i).len > curRefEnd) {
+        weightRef += (chain.seedsRefArray(i).rBeg + chain.seedsRefArray(i).len - curRefEnd).toInt
+        curRefEnd = chain.seedsRefArray(i).rBeg + chain.seedsRefArray(i).len
       }
       //else, do nothing
     }
@@ -100,8 +100,8 @@ object MemChainFilter {
       for (i <- 0 until chainWrapperArray.length) {
         chainWrapperArray(i) = new MemChainWrapperType(chains(i), //the main chain is exactly the corresponding chain in chain array
                                                        null, //the second chain is null
-                                                       chains(i).seeds.head.qBeg, //the query begin of the first seed
-                                                       chains(i).seeds.last.qBeg + chains(i).seeds.last.len, //the query end of the last seed
+                                                       chains(i).seedsRefArray.head.qBeg, //the query begin of the first seed
+                                                       chains(i).seedsRefArray.last.qBeg + chains(i).seedsRefArray.last.len, //the query end of the last seed
                                                        memChainWeight(chains(i))) //the weight calculated by memChainWeight function
 
       }
