@@ -42,7 +42,9 @@ class BWTSMem {
 
   def bwt_occ4(k: Long) : Array[Long] = {
     var cnt : Array[Long] = Array(0, 0, 0, 0);
-    if (k == -1) return cnt
+    //if (k == -1) return cnt
+    // MODIFIED by Yu-Ting Chen
+    if (k == -1) cnt
 
     var _k = k
     if (k >= mBWT.primary) _k -= 1
@@ -179,8 +181,13 @@ class BWTSMem {
   //len: q's length
   def bwtSMem1(bwt: BWTType, len: Int, q: Array[Byte], x: Int, min_intv: Int, mem: MutableList[BWTIntvType], tmpvec_0: MutableList[BWTIntvType], tmpvec_1: MutableList[BWTIntvType]) : Int = {
     mem.clear
-    if (q(x) > 3)
-      return x + 1
+    
+    //if (q(x) > 3)
+      //return x + 1
+
+    // MODIFIED by Yu-Ting Chen
+    if (q(x) > 3) 
+      x + 1
 
     var min_intv_copy : Int = 0
     if (min_intv < 1)

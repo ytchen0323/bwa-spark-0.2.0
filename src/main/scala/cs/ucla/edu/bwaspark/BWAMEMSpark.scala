@@ -73,8 +73,8 @@ object BWAMEMSpark {
     //loading reads
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read.fq")
     println("Load FASTQ files")
-    var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq", 80)
-    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_10Mreads.fq", 10000000)
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq", 80)
+    var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_10Mreads.fq", 10000000)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_5reads_err.fq")
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_err.fq")
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_15000reads.fq")
@@ -90,7 +90,7 @@ object BWAMEMSpark {
       //if(i >= 14700) debugLevel = 1
       //if(i >= 14700) println(i)
       //println("Read: " + i)
-      //i += 1
+      i += 1
       if((i % 10000) == 0) println(i)
       } )
 
