@@ -13,7 +13,7 @@ object MemChain {
 
   //get the next start point for forward and backward extension
 
-  def smemNext(itr: SMemItrType, splitLen: Int, splitWidth: Int, startWidth: Int): MutableList[BWTIntvType] = {
+  def smemNext(itr: SMemItrType, splitLen: Int, splitWidth: Int, startWidth: Int): Array[BWTIntvType] = {
     
     if (debugLevel > 0) {
       println("Perform function smemNext")
@@ -94,8 +94,7 @@ object MemChain {
           //merge itr.matches and itr.sub and sort by start point (end point if start point equals)
           itr.matches = (itr.matches.++(itr.sub)).sortWith((a, b) => (if (a.startPoint < b.startPoint) true else if (a.startPoint > b.startPoint) false else a.endPoint > b.endPoint))
         }
-        var res = new MutableList[BWTIntvType]
-        res = res.++(itr.matches)
+        var res: Array[BWTIntvType] = itr.matches.toArray
 
         if (debugLevel > 0) {
           println("The final result of bwtSMem1 for one iteration")
@@ -125,7 +124,7 @@ object MemChain {
     val startWidth = 1
 
     //the mutable list is for storing all the bi-intervals generated from specific point
-    var bwtIntvOnPoint: MutableList[BWTIntvType] = null
+    var bwtIntvOnPoint: Array[BWTIntvType] = null
 
     //the return value: mutable TreeSet which maintains all the chains
     var chainTree: TreeSet[MemChainType] = null
