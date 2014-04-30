@@ -167,6 +167,15 @@ object MemChainFilter {
       var newChainList = new MutableList[MemChainType]()
 
       for (i <- 0 until idx) {
+        //firstly, insert mainChain and secondChain(if available)
+        newChainList += wrappersAfterFilter(i).mainChain
+        if (wrappersAfterFilter(i).secondChain != null) newChainList += wrappersAfterFilter(i).secondChain
+      }
+      //Then, remove duplicate
+      val newChainArray = (newChainList.toArray).distinct
+
+
+/*      for (i <- 0 until idx) {
         //firstly, insert mainChain
         newChainList += wrappersAfterFilter(i).mainChain
       }
@@ -179,6 +188,7 @@ object MemChainFilter {
         }
       }
       val newChainArray = newChainList.toArray
+*/
     
       if (debugLevel > 0) {
         println("Chains after filtering:")
