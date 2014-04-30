@@ -1,7 +1,5 @@
 package cs.ucla.edu.bwaspark.worker1
 
-import scala.util.control.Breaks._
-import scala.List
 import scala.collection.mutable.MutableList
 
 import cs.ucla.edu.bwaspark.datatype._
@@ -141,14 +139,18 @@ object MemChainToAlign {
     //println
 
     // Setup the value of srt array
-    for(i <- 0 to (chain.seeds.length - 1)) 
+    var i = 0
+    while(i < chain.seeds.length) {
       srt(i) = new SRTType(chain.seedsRefArray(i).len, i)
+      i += 1
+    }
 
     srt = srt.sortBy(s => s.len)
     //srt.map(s => println("(" + s.len + ", " + s.index + ")") )  // debugging message
 
-    // The main for loop
-    for(k <- (chain.seeds.length - 1) to 0 by -1) {
+    // The main for loop    
+    var k = chain.seeds.length - 1
+    while(k >= 0) {
       val seed = chain.seedsRefArray( srt(k).index )
       var i = testExtension(opt, seed, regArray)
      
@@ -204,6 +206,7 @@ object MemChainToAlign {
         regArray.curLength += 1
       }
 
+      k -= 1
     }
 
   }
@@ -285,32 +288,34 @@ object MemChainToAlign {
     var minDist: Int = -1
     var w: Int = -1
     var breakIdx: Int = regArray.maxLength
+    var i = 0
+    var isBreak = false
 
-    breakable {
-      for(i <- 0 to (regArray.curLength - 1)) {
+    while(i < regArray.curLength && !isBreak) {
         
-        if(seed.rBeg >= regArray.regs(i).rBeg && (seed.rBeg + seed.len) <= regArray.regs(i).rEnd && 
-           seed.qBeg >= regArray.regs(i).qBeg && (seed.qBeg + seed.len) <= regArray.regs(i).qEnd) {
-          // qDist: distance ahead of the seed on query; rDist: on reference
-          qDist = seed.qBeg - regArray.regs(i).qBeg
-          rDist = seed.rBeg - regArray.regs(i).rBeg
+      if(seed.rBeg >= regArray.regs(i).rBeg && (seed.rBeg + seed.len) <= regArray.regs(i).rEnd && 
+        seed.qBeg >= regArray.regs(i).qBeg && (seed.qBeg + seed.len) <= regArray.regs(i).qEnd) {
+        // qDist: distance ahead of the seed on query; rDist: on reference
+        qDist = seed.qBeg - regArray.regs(i).qBeg
+        rDist = seed.rBeg - regArray.regs(i).rBeg
 
-          if(qDist < rDist) minDist = qDist 
-          else minDist = rDist.toInt
+        if(qDist < rDist) minDist = qDist 
+        else minDist = rDist.toInt
 
-          // the maximal gap allowed in regions ahead of the seed
-          maxGap = calMaxGap(opt, minDist)
+        // the maximal gap allowed in regions ahead of the seed
+        maxGap = calMaxGap(opt, minDist)
 
-          // bounded by the band width          
-          if(maxGap < opt.w) w = maxGap
-          else w = opt.w
+        // bounded by the band width          
+        if(maxGap < opt.w) w = maxGap
+        else w = opt.w
           
-          // the seed is "around" a previous hit
-          if((qDist - rDist) < w && (rDist - qDist) < w) { 
-            breakIdx = i 
-            break
-          }
+        // the seed is "around" a previous hit
+        if((qDist - rDist) < w && (rDist - qDist) < w) { 
+          breakIdx = i 
+          isBreak = true
+        }
 
+        if(!isBreak) {
           // the codes below are similar to the previous four lines, but this time we look at the region behind
           qDist = regArray.regs(i).qEnd - (seed.qBeg + seed.len)
           rDist = regArray.regs(i).rEnd - (seed.rBeg + seed.len)
@@ -325,10 +330,12 @@ object MemChainToAlign {
 
           if((qDist - rDist) < w && (rDist - qDist) < w) {
             breakIdx = i
-            break
+            isBreak = true
           }          
         }
       }
+
+      i += 1
     }
 
     breakIdx
@@ -345,26 +352,29 @@ object MemChainToAlign {
     */ 
   private def checkOverlapping(startIdx: Int, seed: MemSeedType, chain: MemChainType, srt: Array[SRTType]): Int = {
     var breakIdx = chain.seeds.length
+    var i = startIdx
+    var isBreak = false
 
-    breakable {
-      for(i <- startIdx to (chain.seeds.length - 1)) {
-        if(srt(i).index != 0) {
-          val targetSeed = chain.seedsRefArray(srt(i).index)
+    while(i < chain.seeds.length && !isBreak) {
+      if(srt(i).index != 0) {
+        val targetSeed = chain.seedsRefArray(srt(i).index)
 
-          // only check overlapping if t is long enough; TODO: more efficient by early stopping
-          // NOTE: the original implementation may be not correct!!!
-          if(targetSeed.len >= seed.len * 0.95) {
-            if(seed.qBeg <= targetSeed.qBeg && (seed.qBeg + seed.len - targetSeed.qBeg) >= (seed.len>>2) && (targetSeed.qBeg - seed.qBeg) != (targetSeed.rBeg - seed.rBeg)) {
-              breakIdx = i
-              break
-            }
-            if(targetSeed.qBeg <= seed.qBeg && (targetSeed.qBeg + targetSeed.len - seed.qBeg) >= (seed.len>>2) && (seed.qBeg - targetSeed.qBeg) != (seed.rBeg - targetSeed.rBeg)) {
-              breakIdx = i
-              break
-            }
+        // only check overlapping if t is long enough; TODO: more efficient by early stopping
+        // NOTE: the original implementation may be not correct!!!
+        if(targetSeed.len >= seed.len * 0.95) {
+          if(seed.qBeg <= targetSeed.qBeg && (seed.qBeg + seed.len - targetSeed.qBeg) >= (seed.len>>2) && (targetSeed.qBeg - seed.qBeg) != (targetSeed.rBeg - seed.rBeg)) {
+            breakIdx = i
+            isBreak = true
+          }
+            
+          if(!isBreak && targetSeed.qBeg <= seed.qBeg && (targetSeed.qBeg + targetSeed.len - seed.qBeg) >= (seed.len>>2) && (seed.qBeg - targetSeed.qBeg) != (seed.rBeg - targetSeed.rBeg)) {
+            breakIdx = i
+            isBreak = true
           }
         }
       }
+
+      i += 1
     }
 
     breakIdx
@@ -394,23 +404,34 @@ object MemChainToAlign {
 
     var regResult = reg
     
-    for(i <- 0 to (seed.qBeg - 1)) qs(i) = query(seed.qBeg - 1 - i)
-    for(i <- 0 to (tmp - 1)) rs(i) = rseq(tmp - 1 - i)
-    
-    breakable {
-      for(i <- 0 to (MAX_BAND_TRY - 1)) {
-        var prev = regResult.score
-        aw = opt.w << i
-        val results = SWExtend(seed.qBeg, qs, tmp, rs, 5, opt.mat, opt.oDel, opt.eDel, opt.oIns, opt.eIns, aw, opt.penClip5, opt.zdrop, seed.len * opt.a)
-        regResult.score = results(0)
-        qle = results(1)
-        tle = results(2)
-        gtle = results(3)
-        gscore = results(4)
-        maxoff = results(5)
+    var i = 0
+    while(i < seed.qBeg) {
+      qs(i) = query(seed.qBeg - 1 - i)
+      i += 1
+    }
 
-        if(regResult.score == prev || ( maxoff < (aw >> 1) + (aw >> 2) ) ) break
-      }
+    i = 0
+    while(i < tmp) {
+      rs(i) = rseq(tmp - 1 - i)
+      i += 1
+    }
+    
+    i = 0
+    var isBreak = false
+    while(i < MAX_BAND_TRY && !isBreak) {
+      var prev = regResult.score
+      aw = opt.w << i
+      val results = SWExtend(seed.qBeg, qs, tmp, rs, 5, opt.mat, opt.oDel, opt.eDel, opt.oIns, opt.eIns, aw, opt.penClip5, opt.zdrop, seed.len * opt.a)
+      regResult.score = results(0)
+      qle = results(1)
+      tle = results(2)
+      gtle = results(3)
+      gscore = results(4)
+      maxoff = results(5)
+
+      if(regResult.score == prev || ( maxoff < (aw >> 1) + (aw >> 2) ) ) isBreak = true
+
+      i += 1
     }
 
     // check whether we prefer to reach the end of the query
@@ -457,28 +478,39 @@ object MemChainToAlign {
     assert(re >= 0)
 
     var qeArray = new Array[Byte](queryLen - qe)
+    var i = 0
     // fill qeArray
-    for(i <- 0 to (queryLen - qe - 1)) qeArray(i) = query(qe + i)
+    while(i < (queryLen - qe)) {
+      qeArray(i) = query(qe + i)
+      i += 1
+    }
 
     var reArray = new Array[Byte]((rmax(1) - rmax(0) - re).toInt)
     // fill reArray
-    for(i <- 0 to (rmax(1) - rmax(0) - re - 1).toInt) reArray(i) = rseq(re.toInt + i)
-
-    breakable {
-      for(i <- 0 to (MAX_BAND_TRY - 1)) {
-        var prev = regResult.score
-        aw = opt.w << i
-        val results = SWExtend(queryLen - qe, qeArray, (rmax(1) - rmax(0) - re).toInt, reArray, 5, opt.mat, opt.oDel, opt.eDel, opt.oIns, opt.eIns, aw, opt.penClip3, opt.zdrop, sc0)
-        regResult.score = results(0)
-        qle = results(1)
-        tle = results(2)
-        gtle = results(3)
-        gscore = results(4)
-        maxoff = results(5)
-
-        if(regResult.score == prev || ( maxoff < (aw >> 1) + (aw >> 2) ) ) break
-      }
+    i = 0
+    while(i < (rmax(1) - rmax(0) - re).toInt) {
+      reArray(i) = rseq(re.toInt + i)
+      i += 1
     }
+
+    i = 0
+    var isBreak = false
+    while(i < MAX_BAND_TRY && !isBreak) {
+      var prev = regResult.score
+      aw = opt.w << i
+      val results = SWExtend(queryLen - qe, qeArray, (rmax(1) - rmax(0) - re).toInt, reArray, 5, opt.mat, opt.oDel, opt.eDel, opt.oIns, opt.eIns, aw, opt.penClip3, opt.zdrop, sc0)
+      regResult.score = results(0)
+      qle = results(1)
+      tle = results(2)
+      gtle = results(3)
+      gscore = results(4)
+      maxoff = results(5)
+
+      if(regResult.score == prev || ( maxoff < (aw >> 1) + (aw >> 2) ) ) isBreak = true
+
+      i += 1
+    }
+
     // check whether we prefer to reach the end of the query
     // local extension
     if(gscore <= 0 || gscore <= (regResult.score - opt.penClip3)) {
@@ -504,14 +536,17 @@ object MemChainToAlign {
     */
   private def computeSeedCoverage(chain: MemChainType, reg: MemAlnRegType): Int = {
     var seedcov = 0
+    var i = 0
     
-    for(i <- 0 to (chain.seeds.length - 1)) {
+    while(i < chain.seeds.length) {
       // seed fully contained
       if(chain.seedsRefArray(i).qBeg >= reg.qBeg && 
          chain.seedsRefArray(i).qBeg + chain.seedsRefArray(i).len <= reg.qEnd &&
          chain.seedsRefArray(i).rBeg >= reg.rBeg &&
          chain.seedsRefArray(i).rBeg + chain.seedsRefArray(i).len <= reg.rEnd)
         seedcov += chain.seedsRefArray(i).len   // this is not very accurate, but for approx. mapQ, this is good enough
+
+      i += 1
     }
 
     seedcov

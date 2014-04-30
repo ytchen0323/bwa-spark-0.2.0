@@ -91,30 +91,21 @@ object BinaryFileReadUtil {
     var idx = startIdx
     var reachSizeLimit = false
 
-    breakable {
-      while(ret >= 0) {
-        ret = fc.read(buf)
-        buf.flip
+    while(ret >= 0 && !reachSizeLimit) {
+      ret = fc.read(buf)
+      buf.flip
      
-        // Fill the data from buf
-        breakable {
-          while(buf.hasRemaining) {
-            val piece = buf.get
-            outputArray(idx) = piece
-            idx += 1
+      // Fill the data from buf
+      while(buf.hasRemaining && !reachSizeLimit) {
+        val piece = buf.get
+        outputArray(idx) = piece
+        idx += 1
 
-            if(idx >= arraySize) {
-              reachSizeLimit = true
-              break
-            }
-          }
-        }
-
-        if(reachSizeLimit)
-          break
-
-        buf.rewind
+        if(idx >= arraySize) 
+          reachSizeLimit = true
       }
+
+      buf.rewind
     }
 
     outputArray

@@ -51,18 +51,25 @@ object SWUtil {
     var k = 0
     var w = w_i
 
-    for(i <- 0 until (qLen + 1))
+    while(i < (qLen + 1)) {
       eh(i) = new EHType(0, 0)
+      i += 1
+    }
 
     // generate the query profile
     i = 0
-    for(k <- 0 to (m - 1)) {
+    k = 0
+    while(k < m) {
       val p = k * m
       
-      for(j <- 0 to (qLen - 1)) {
+      j = 0
+      while(j < qLen) {
         qp(i) = mat(p + query(j))
         i += 1
+        j += 1
       }
+
+      k += 1
     }
     
     // fill the first row
@@ -78,9 +85,7 @@ object SWUtil {
     // adjust $w if it is too large
     k = m * m
     var max = 0
-    for(i <- 0 to (k - 1)) // get the max score
-      if(max < mat(i))
-        max = mat(i)
+    max = mat.max // get the max score
     var maxIns = ((qLen * max + endBonus - oIns).toDouble / eIns + 1.0).toInt
     if(maxIns < 1) maxIns = 1
     var maxDel = ((qLen * max + endBonus - oDel).toDouble / eDel + 1.0).toInt
@@ -97,63 +102,67 @@ object SWUtil {
     var beg = 0
     var end = qLen
 
-    breakable {
-      for(i <- 0 to (tLen - 1)) {
-        var t = 0
-        var f = 0
-        var h1 = 0
-        var m = 0
-        var mj = -1
-        var qPtr = target(i) * qLen
-        // compute the first column
-        h1 = h0 - (oDel + eDel * (i + 1))
-        if(h1 < 0) h1 = 0
-        // apply the band and the constraint (if provided)
-        if (beg < i - w) beg = i - w
-        if (end > i + w + 1) end = i + w + 1
-        if (end > qLen) end = qLen
+    //breakable {
+    var isBreak = false
+    i = 0
+    while(i < tLen && !isBreak) {
+      var t = 0
+      var f = 0
+      var h1 = 0
+      var m = 0
+      var mj = -1
+      var qPtr = target(i) * qLen
+      // compute the first column
+      h1 = h0 - (oDel + eDel * (i + 1))
+      if(h1 < 0) h1 = 0
+      // apply the band and the constraint (if provided)
+      if (beg < i - w) beg = i - w
+      if (end > i + w + 1) end = i + w + 1
+      if (end > qLen) end = qLen
 
-      
-        for(j <- beg to (end - 1)) {
-          // At the beginning of the loop: eh[j] = { H(i-1,j-1), E(i,j) }, f = F(i,j) and h1 = H(i,j-1)
-          // Similar to SSE2-SW, cells are computed in the following order:
-          //   H(i,j)   = max{H(i-1,j-1)+S(i,j), E(i,j), F(i,j)}
-          //   E(i+1,j) = max{H(i,j)-gapo, E(i,j)} - gape
-          //   F(i,j+1) = max{H(i,j)-gapo, F(i,j)} - gape
-          var h = eh(j).h
-          var e = eh(j).e   // get H(i-1,j-1) and E(i-1,j)
-          eh(j).h = h1
-          h += qp(qPtr + j)
-          if(h < e) h = e
-          if(h < f) h = f 
-          h1 = h            // save H(i,j) to h1 for the next column
-          if(m < h) { 
-            mj = j          // record the position where max score is achieved
-            m = h           // m is stored at eh[mj+1]
-          }
-          t = h - oeDel
-          if(t < 0) t = 0
-          e -= eDel
-          if(e < t) e = t   // computed E(i+1,j)
-          eh(j).e = e       // save E(i+1,j) for the next row
-          t = h - oeIns
-          if(t < 0) t = 0
-          f -= eIns
-          if(f < t) f = t
+      j = beg
+      while(j < end) {
+        // At the beginning of the loop: eh[j] = { H(i-1,j-1), E(i,j) }, f = F(i,j) and h1 = H(i,j-1)
+        // Similar to SSE2-SW, cells are computed in the following order:
+        //   H(i,j)   = max{H(i-1,j-1)+S(i,j), E(i,j), F(i,j)}
+        //   E(i+1,j) = max{H(i,j)-gapo, E(i,j)} - gape
+        //   F(i,j+1) = max{H(i,j)-gapo, F(i,j)} - gape
+        var h = eh(j).h
+        var e = eh(j).e   // get H(i-1,j-1) and E(i-1,j)
+        eh(j).h = h1
+        h += qp(qPtr + j)
+        if(h < e) h = e
+        if(h < f) h = f 
+        h1 = h            // save H(i,j) to h1 for the next column
+        if(m < h) { 
+          mj = j          // record the position where max score is achieved
+          m = h           // m is stored at eh[mj+1]
         }
+        t = h - oeDel
+        if(t < 0) t = 0
+        e -= eDel
+        if(e < t) e = t   // computed E(i+1,j)
+        eh(j).e = e       // save E(i+1,j) for the next row
+        t = h - oeIns
+        if(t < 0) t = 0
+        f -= eIns
+        if(f < t) f = t
+        j += 1
+      }
       
-        eh(end).h = h1
-        eh(end).e = 0
-        // end == j after the previous loop
-        if(end == qLen) {
-          if(gscore < h1) {
-            max_ie = i
-            gscore = h1
-          }
+      eh(end).h = h1
+      eh(end).e = 0
+      // end == j after the previous loop
+      if(end == qLen) {
+        if(gscore < h1) {
+          max_ie = i
+          gscore = h1
         }
+      }
 
-        if(m == 0) break
-
+      if(m == 0) 
+        isBreak = true
+      else {
         if(m > max) {
           max = m
           max_i = i
@@ -163,25 +172,28 @@ object SWUtil {
         }
         else if(zdrop > 0) {
           if((i - max_i) > (mj - max_j)) 
-            if(max - m - ((i - max_i) - (mj - max_j)) * eDel > zdrop) break
+            if(max - m - ((i - max_i) - (mj - max_j)) * eDel > zdrop) isBreak = true
           else
-            if(max - m - ((mj - max_j) - (i - max_i)) * eIns > zdrop) break;
+            if(max - m - ((mj - max_j) - (i - max_i)) * eIns > zdrop) isBreak = true
         }
         
         // update beg and end for the next round
-        j = mj
-        while(j >= beg && eh(j).h > 0) {
-          j -= 1
-        }
-        beg = j + 1
+        if(!isBreak) {
+          j = mj
+          while(j >= beg && eh(j).h > 0) {
+            j -= 1
+          }
+          beg = j + 1
 
-        j = mj + 2
-        while(j <= end && eh(j).h > 0) {
-          j += 1
+          j = mj + 2
+          while(j <= end && eh(j).h > 0) {
+            j += 1
+          }
+          end = j
         }
-        end = j
       }
 
+      i += 1
     }
 
     retArray(0) = max

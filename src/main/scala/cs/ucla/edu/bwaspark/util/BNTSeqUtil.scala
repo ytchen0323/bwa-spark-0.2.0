@@ -38,15 +38,19 @@ object BNTSeqUtil {
       if( begVar >= pacLen ) {//reverse strand
         var begF: Long = (pacLen<<1) - 1 - endVar
         var endF: Long = (pacLen<<1) - 1 - begVar
-        for( k <- endF to (begF + 1) by -1) {
+        k = endF
+        while(k >= (begF + 1)) {
           seq(l) = (3 - getPac(pac, k)).toByte
-          l = l + 1
+          l += 1
+          k -= 1
         }
       }
       else {
-        for( k <- begVar until endVar ) {
+        k = begVar
+        while(k < endVar) {
           seq(l) = getPac(pac, k).toByte
-          l = l + 1
+          k += 1
+          l += 1
         }
       }
     }
@@ -99,18 +103,17 @@ object BNTSeqUtil {
       var right = bns.n_seqs
       
       // binary search
-      breakable {
-        while(left < right) {
-          mid = (left + right) >> 1
-        
-          if(posF >= bns.anns(mid).offset) {
-            if(mid == bns.n_seqs - 1) break
-            if(posF < bns.anns(mid + 1).offset) break
-            left = mid + 1
-          }
-          else
-            right = mid
+      var isBreak = false
+      while(left < right && !isBreak) {
+        mid = (left + right) >> 1
+       
+        if(posF >= bns.anns(mid).offset) {
+          if(mid == bns.n_seqs - 1) isBreak = true
+          if(!isBreak && posF < bns.anns(mid + 1).offset) isBreak = true
+          left = mid + 1
         }
+        else
+          right = mid
       }
 
       mid
