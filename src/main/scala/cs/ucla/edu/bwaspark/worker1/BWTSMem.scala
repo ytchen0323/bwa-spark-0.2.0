@@ -214,7 +214,9 @@ class BWTSMem {
         println("[DEBUG] len = " + len + ", length of q = " + q.length + ", min_intv = " + min_intv_copy)
       }
 
-      breakable { for (i <- x + 1 to len - 1) { //forward search
+      var i: Int = x + 1
+//      breakable { for (i <- x + 1 to len - 1) { //forward search
+      while (i < len && breaked == false) { //forward search
         if (DebugFlag.debugBWTSMem == true)
           println("[DEBUG] i = " + i + " ,q[i] = " + q(i))
         if (q(i) < 4) {	//an A/C/G/T base
@@ -231,21 +233,24 @@ class BWTSMem {
               if (DebugFlag.debugBWTSMem == true)
                 println("[DEBUG] breaking!!!")
               breaked = true
-              break
+//              break
             }
           }
-          m_ik.copy(m_ok(c))
-          m_ik.endPoint = i + 1
-          if (DebugFlag.debugBWTSMem == true)
-            println("[DEBUG] curr(0).s = " + curr(0).s + ", m_ik.s = " + m_ik.s)
+          if (breaked == false) {
+            m_ik.copy(m_ok(c))
+            m_ik.endPoint = i + 1
+            if (DebugFlag.debugBWTSMem == true)
+              println("[DEBUG] curr(0).s = " + curr(0).s + ", m_ik.s = " + m_ik.s)
+          }
         }
         else {
           var m_ik_copy = new BWTIntvType(m_ik.startPoint, m_ik.endPoint, m_ik.k, m_ik.l, m_ik.s)
           curr.+=:(m_ik_copy) //prepend the item to the list -- no need to reverse later
           breaked = true
-          break
+//          break
         }
-      } }
+        i += 1
+      }
 
       if (breaked == false) {
         var m_ik_copy = new BWTIntvType(m_ik.startPoint, m_ik.endPoint, m_ik.k, m_ik.l, m_ik.s)
@@ -271,9 +276,11 @@ class BWTSMem {
         println("[DEBUG] Begin backward search. x = " + x)
       }
 
-      var i = x - 1
+      i = x - 1
 
-      breakable { while (i >= -1) { //backward extension
+//      breakable { while (i >= -1) { //backward extension
+      breaked = false
+      while (i >= -1 && breaked == false) { //backward extension
         if (i < 0)
           c = -1
         else {
@@ -283,7 +290,8 @@ class BWTSMem {
         curr.clear
         if (DebugFlag.debugBWTSMem == true)
           println("[DEBUG] prev.length = " + prev.length)
-        breakable { for (j <- 0 to prev.length - 1) {
+//        breakable { for (j <- 0 to prev.length - 1) {
+        for (j <- 0 to prev.length - 1) {
           m_ik = prev(j)
           if (DebugFlag.debugBWTSMem == true)
             println("[DEBUG] Input for bwtExtend: " + m_ik.startPoint + " " + m_ik.endPoint + " " + m_ik.k + " " + m_ik.l + " " + m_ik.s)
@@ -314,13 +322,15 @@ class BWTSMem {
             var m_ok_copy = new BWTIntvType(m_ok(c).startPoint, m_ok(c).endPoint, m_ok(c).k, m_ok(c).l, m_ok(c).s)
             curr += m_ok_copy
           }
-        } }
-        if (curr.isEmpty) break
-        swap = curr
-        curr = prev
-        prev = swap
-        i -= 1
-      } }
+        }
+        if (curr.isEmpty) breaked = true
+        else {
+          swap = curr
+          curr = prev
+          prev = swap
+          i -= 1
+        }
+      }
 
       if (DebugFlag.debugBWTSMem == true) {
         println("[DEBUG] Backward search ends.")
