@@ -32,24 +32,22 @@ class BWTSMem {
   var m_tk : Array[Long] = new Array[Long](4)
   var m_tl : Array[Long] = new Array[Long](4)
 
-  def bwtOccIntv(k: Long) : Long = {
-    (k >>> 7) << 4
-  }
+  //def bwtOccIntv(k: Long) : Long = {
+  //  (k >>> 7) << 4
+  //}
 
-  def occAux4(b: Int) : Long = {
-    mBWT.cntTable(b & 0xff) + mBWT.cntTable((b >>> 8) & 0xff) + mBWT.cntTable((b >>> 16) & 0xff) + mBWT.cntTable(b >>> 24)
-  }
+  //def occAux4(b: Int) : Long = {
+  //  mBWT.cntTable(b & 0xff) + mBWT.cntTable((b >>> 8) & 0xff) + mBWT.cntTable((b >>> 16) & 0xff) + mBWT.cntTable(b >>> 24)
+  //}
 
   def bwt_occ4(k: Long) : Array[Long] = {
     var cnt : Array[Long] = Array(0, 0, 0, 0);
-    //if (k == -1) return cnt
-    // MODIFIED by Yu-Ting Chen
     if (k == -1) cnt
 
     else {
       var _k = k
       if (k >= mBWT.primary) _k -= 1
-      var index = bwtOccIntv(_k)
+      var index = (_k >>> 7) << 4    // Inline of bwtOccIntv(_k)
       var tmp_idx = index.toInt
       assert(tmp_idx >= 0) //assertion enabled?
       //mimic memcpy in the orignal program, test needed!!!
@@ -61,12 +59,12 @@ class BWTSMem {
       var end_idx = index + ((_k >>> 4) - ((_k & ~OCC_INTV_MASK) >>> 4))
       var x : Long = 0
       while (index < end_idx) {
-        x += occAux4(mBWT.bwt(index.toInt))
+        x += mBWT.cntTable(mBWT.bwt(index.toInt) & 0xff) + mBWT.cntTable((mBWT.bwt(index.toInt) >>> 8) & 0xff) + mBWT.cntTable((mBWT.bwt(index.toInt) >>> 16) & 0xff) + mBWT.cntTable(mBWT.bwt(index.toInt) >>> 24)  // Inline occAux4(mBWT.bwt(index.toInt))
         index += 1
       }
 
       var tmp : Int = mBWT.bwt(index.toInt) & ~((1 << ((~_k & 15) << 1)) - 1)
-      x += occAux4(tmp) - (~_k & 15)
+      x += mBWT.cntTable(tmp & 0xff) + mBWT.cntTable((tmp >>> 8) & 0xff) + mBWT.cntTable((tmp >>> 16) & 0xff) + mBWT.cntTable(tmp >>> 24) - (~_k & 15)  // Inline occAux4(tmp)
       cnt(0) += x & 0xff
       cnt(1) += (x >>> 8) & 0xff
       cnt(2) += (x >>> 16) & 0xff
@@ -87,7 +85,7 @@ class BWTSMem {
     else {
       if (k >= mBWT.primary) _k = k - 1
       if (l >= mBWT.primary) _l = l - 1
-      var index = bwtOccIntv(_k)
+      var index = (_k >>> 7) << 4    // Inline of bwtOccIntv(_k)
       var tmp_idx = index.toInt
       assert(tmp_idx >= 0) //assertion enabled?
       //mimic memcpy in the orignal program, test needed!!!
@@ -101,19 +99,19 @@ class BWTSMem {
       var x : Long = 0
       var y : Long = 0
       while (index < endk_idx) {
-	x += occAux4(mBWT.bwt(index.toInt))
+	x += mBWT.cntTable(mBWT.bwt(index.toInt) & 0xff) + mBWT.cntTable((mBWT.bwt(index.toInt) >>> 8) & 0xff) + mBWT.cntTable((mBWT.bwt(index.toInt) >>> 16) & 0xff) + mBWT.cntTable(mBWT.bwt(index.toInt) >>> 24)  // Inline occAux4(mBWT.bwt(index.toInt))
 	index += 1
       }
       y = x
       var tmp : Int = 0
       tmp = mBWT.bwt(index.toInt) & ~((1 << ((~_k & 15) << 1)) - 1)
-      x += occAux4(tmp) - (~_k & 15)
+      x += mBWT.cntTable(tmp & 0xff) + mBWT.cntTable((tmp >>> 8) & 0xff) + mBWT.cntTable((tmp >>> 16) & 0xff) + mBWT.cntTable(tmp >>> 24) - (~_k & 15)  // Inline occAux4(tmp)
       while (index < endl_idx) {
-	y += occAux4(mBWT.bwt(index.toInt))
+	y += mBWT.cntTable(mBWT.bwt(index.toInt) & 0xff) + mBWT.cntTable((mBWT.bwt(index.toInt) >>> 8) & 0xff) + mBWT.cntTable((mBWT.bwt(index.toInt) >>> 16) & 0xff) + mBWT.cntTable(mBWT.bwt(index.toInt) >>> 24)  // Inline occAux4(mBWT.bwt(index.toInt))
 	index += 1
       }
       tmp = mBWT.bwt(index.toInt) & ~((1 << ((~_l & 15) << 1)) - 1)
-      y += occAux4(tmp) - (~_l & 15)
+      y += mBWT.cntTable(tmp & 0xff) + mBWT.cntTable((tmp >>> 8) & 0xff) + mBWT.cntTable((tmp >>> 16) & 0xff) + mBWT.cntTable(tmp >>> 24) - (~_l & 15)  // Inline occAux4(tmp) 
       m_tk.copyToArray(m_tl)
       m_tk(0) += x & 0xff
       m_tk(1) += (x >>> 8) & 0xff
