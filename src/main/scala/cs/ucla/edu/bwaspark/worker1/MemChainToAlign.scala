@@ -11,90 +11,6 @@ import java.io.{FileReader, BufferedReader}
 
 object MemChainToAlign {
   val MAX_BAND_TRY = 2    
-
-  /**
-    *  Read class (testing use)
-    */
-  class ReadChain(chains_i: MutableList[MemChainType], seq_i: Array[Byte]) {
-    var chains: MutableList[MemChainType] = chains_i
-    var seq: Array[Byte] = seq_i
-  }
-
-  /**
-    *  Member variable of all reads (testing use)
-    */ 
-  var testReadChains: MutableList[ReadChain] = new MutableList
-  
-  /**
-    *  Read the test chain data generated from bwa-0.7.8 (C version) (testing use)
-    *
-    *  @param fileName the test data file name
-    */
-  def readTestData(fileName: String) {
-    val reader = new BufferedReader(new FileReader(fileName))
-
-    var line = reader.readLine
-    var chains: MutableList[MemChainType] = new MutableList
-    var chainPos: Long = 0
-    var seeds: MutableList[MemSeedType] = new MutableList
-    var seq: Array[Byte] = new Array[Byte](101)
-
-    while(line != null) {
-      val lineFields = line.split(" ")      
-
-      // Find a sequence
-      if(lineFields(0) == "Sequence") {
-        chains = new MutableList
-        seq = lineFields(2).getBytes
-        seq = seq.map(s => (s - 48).toByte) // ASCII => Byte(Int)
-      }
-      // Find a chain
-      else if(lineFields(0) == "Chain") {
-        seeds = new MutableList
-        chainPos = lineFields(1).toLong
-      }
-      // Fina a seed
-      else if(lineFields(0) == "Seed") {
-        seeds += (new MemSeedType(lineFields(1).toLong, lineFields(2).toInt, lineFields(3).toInt))
-      }
-      // append the current list
-      else if(lineFields(0) == "ChainEnd") {
-        val cur_seeds = seeds
-        chains += (new MemChainType(chainPos, cur_seeds))
-      }
-      // append the current list
-      else if(lineFields(0) == "SequenceEnd") {
-        val cur_chains = chains
-        val cur_seq = seq 
-        testReadChains += (new ReadChain(cur_chains, seq))
-      }
-
-      line = reader.readLine
-    }
-
-  }
-
-
-  /**
-    *  Print all the chains (and seeds) from all input reads 
-    *  (Only for testing use)
-    */
-  def printAllReads() {
-    def printChains(chains: MutableList[MemChainType]) {
-      println("Sequence");
-      def printSeeds(seeds: MutableList[MemSeedType]) {
-        seeds.foreach(s => println("Seed " + s.rBeg + " " + s.qBeg + " " + s.len))
-      }
-    
-      chains.map(p => {
-        println("Chain " + p.pos + " " + p.seeds.length)
-        printSeeds(p.seeds)
-                      } )
-    }
-
-    testReadChains.foreach(r => printChains(r.chains))
-  }
-
   /**
     *  Data structure which keep both the length of a seed and its index in the original chain
     */
@@ -121,7 +37,13 @@ object MemChainToAlign {
     var srt: Array[SRTType] = new Array[SRTType](chain.seeds.length) 
     var aw: Array[Int] = new Array[Int](2)
 
- 
+/* 
+    // testing
+    println("%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+    for(seed <- chain.seeds)
+      println("(" + seed.rBeg + ", " + seed.qBeg + ", " + seed.len + ")");
+*/
+
     // calculate the maximum possible span of this alignment
     rmax = getMaxSpan(opt, pacLen, queryLen, chain)
     //println("rmax(0): " + rmax(0) + ", rmax(1): " + rmax(1))  // debugging message
@@ -144,7 +66,7 @@ object MemChainToAlign {
       srt(i) = new SRTType(chain.seedsRefArray(i).len, i)
       i += 1
     }
-
+    
     srt = srt.sortBy(s => s.len)
     //srt.map(s => println("(" + s.len + ", " + s.index + ")") )  // debugging message
 
@@ -160,9 +82,11 @@ object MemChainToAlign {
       
       // no overlapping seeds; then skip extension
       if((i < regArray.curLength) && (checkoverlappingRet == chain.seeds.length)) {
+        //println("[0] " + k)  // testing
         srt(k).index = 0  // mark that seed extension has not been performed
       }
       else {
+        //println("[1] " + k) // testing
         // push the current align reg into the output list
         // initialize a new alnreg
         var reg = new MemAlnRegType
@@ -550,6 +474,90 @@ object MemChainToAlign {
     }
 
     seedcov
+  }
+
+
+  /**
+    *  Read class (testing use)
+    */
+  class ReadChain(chains_i: MutableList[MemChainType], seq_i: Array[Byte]) {
+    var chains: MutableList[MemChainType] = chains_i
+    var seq: Array[Byte] = seq_i
+  }
+
+  /**
+    *  Member variable of all reads (testing use)
+    */ 
+  var testReadChains: MutableList[ReadChain] = new MutableList
+  
+  /**
+    *  Read the test chain data generated from bwa-0.7.8 (C version) (testing use)
+    *
+    *  @param fileName the test data file name
+    */
+  def readTestData(fileName: String) {
+    val reader = new BufferedReader(new FileReader(fileName))
+
+    var line = reader.readLine
+    var chains: MutableList[MemChainType] = new MutableList
+    var chainPos: Long = 0
+    var seeds: MutableList[MemSeedType] = new MutableList
+    var seq: Array[Byte] = new Array[Byte](101)
+
+    while(line != null) {
+      val lineFields = line.split(" ")      
+
+      // Find a sequence
+      if(lineFields(0) == "Sequence") {
+        chains = new MutableList
+        seq = lineFields(2).getBytes
+        seq = seq.map(s => (s - 48).toByte) // ASCII => Byte(Int)
+      }
+      // Find a chain
+      else if(lineFields(0) == "Chain") {
+        seeds = new MutableList
+        chainPos = lineFields(1).toLong
+      }
+      // Fina a seed
+      else if(lineFields(0) == "Seed") {
+        seeds += (new MemSeedType(lineFields(1).toLong, lineFields(2).toInt, lineFields(3).toInt))
+      }
+      // append the current list
+      else if(lineFields(0) == "ChainEnd") {
+        val cur_seeds = seeds
+        chains += (new MemChainType(chainPos, cur_seeds))
+      }
+      // append the current list
+      else if(lineFields(0) == "SequenceEnd") {
+        val cur_chains = chains
+        val cur_seq = seq 
+        testReadChains += (new ReadChain(cur_chains, seq))
+      }
+
+      line = reader.readLine
+    }
+
+  }
+
+
+  /**
+    *  Print all the chains (and seeds) from all input reads 
+    *  (Only for testing use)
+    */
+  def printAllReads() {
+    def printChains(chains: MutableList[MemChainType]) {
+      println("Sequence");
+      def printSeeds(seeds: MutableList[MemSeedType]) {
+        seeds.foreach(s => println("Seed " + s.rBeg + " " + s.qBeg + " " + s.len))
+      }
+    
+      chains.map(p => {
+        println("Chain " + p.pos + " " + p.seeds.length)
+        printSeeds(p.seeds)
+                      } )
+    }
+
+    testReadChains.foreach(r => printChains(r.chains))
   }
 
 }

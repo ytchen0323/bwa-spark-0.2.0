@@ -1,7 +1,5 @@
 package cs.ucla.edu.bwaspark.worker2
 
-import scala.collection.mutable.MutableList
-
 import cs.ucla.edu.bwaspark.datatype._
 import cs.ucla.edu.bwaspark.worker2.MemMarkPrimarySe._
 import cs.ucla.edu.bwaspark.worker2.MemRegToADAMSAM._
@@ -16,7 +14,7 @@ object BWAMemWorker2 {
     *  @param pac the PAC array
     *  @param seq the read (NOTE: currently we use Array[Byte] first. may need to be changed!!!)
     */
-  def bwaMemWorker2(opt: MemOptType, regs: MutableList[MemAlnRegType], bns: BNTSeqType, pac: Array[Byte], seq: String, numProcessed: Long) {
+  def bwaMemWorker2(opt: MemOptType, regs: Array[MemAlnRegType], bns: BNTSeqType, pac: Array[Byte], seq: String, numProcessed: Long) {
     val regsOut = memMarkPrimarySe(opt, regs, numProcessed)
     
     //pre-process: transform A/C/G/T to 0,1,2,3

@@ -57,8 +57,6 @@ object BWAMemWorker1 {
       //second step: filter chains
       val chainsFiltered = memChainFilter(opt, chains)
 
-      //var alignRegArray: MutableList[MemAlnRegType] = null
-
       if (chainsFiltered == null) 
         null
       else {
@@ -74,6 +72,13 @@ object BWAMemWorker1 {
         regArray.maxLength = totalSeedNum
         regArray.regs = new Array[MemAlnRegType](totalSeedNum)
 
+        // test
+/*
+        var tmp = chainsFiltered(2)
+        chainsFiltered(2) = chainsFiltered(1)
+        chainsFiltered(1) = tmp
+*/
+
         for (i <- 0 until chainsFiltered.length) {
           //alignRegArray = memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered(i), regs)
           //regArray = memChainToAln(opt, bns.l_pac, pac, len, read, chainsFiltered(i), regArray)
@@ -83,9 +88,18 @@ object BWAMemWorker1 {
         regArray.regs = regArray.regs.filter(r => (r != null))
         regArray.maxLength = regArray.regs.length
         assert(regArray.curLength == regArray.maxLength, "[Error] After filtering array elements")
-        //last step: sorting and deduplication
+/*
+    var i = 0
+    regArray.regs.foreach(r => {
+        print("Reg " + i + "(")
+        print(r.rBeg + ", " + r.rEnd + ", " + r.qBeg + ", " + r.qEnd + ", " + r.score + ", " + r.trueScore + ", ")
+        println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ")")
+        i += 1
+    } )
+    println("##############################################################")
+*/
 
-        //val pureRegArray = memSortAndDedup(alignRegArray, opt.maskLevelRedun)
+        //last step: sorting and deduplication
         val pureRegArray = memSortAndDedup(regArray, opt.maskLevelRedun)
 
         pureRegArray.regs

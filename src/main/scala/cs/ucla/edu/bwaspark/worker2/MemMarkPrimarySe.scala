@@ -19,7 +19,7 @@ object MemMarkPrimarySe {
    * @param id the Long object
    */
   //??opt a list or a object??
-  def memMarkPrimarySe(opt: MemOptType, a: MutableList[MemAlnRegType], id: Long) : MutableList[MemAlnRegType] = {
+  def memMarkPrimarySe(opt: MemOptType, a: Array[MemAlnRegType], id: Long) : Array[MemAlnRegType] = {
     val n: Int = a.length
     var i: Int = 0
     var j: Int = 0
@@ -27,7 +27,7 @@ object MemMarkPrimarySe {
     var k: Int = 0
     var z: MutableList[Int] = new MutableList
     //aVar, the returned value
-    var aVar: MutableList[MemAlnRegType] = new MutableList
+    var aVar: Array[MemAlnRegType] = null
     if( n != 0) {
       for( i <- 0 until n ) {
 	a(i).sub = 0

@@ -26,14 +26,15 @@ object MemRegToADAMSAM {
     *  @param extraFlag
     *  @param alns 
     */
-  def memRegToSAMSe(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], seq: Array[Byte], regs: MutableList[MemAlnRegType], extraFlag: Int, alnsIn: MutableList[MemAlnType]) {
+  def memRegToSAMSe(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], seq: Array[Byte], regs: Array[MemAlnRegType], extraFlag: Int, alnsIn: MutableList[MemAlnType]) {
     var alns: MutableList[MemAlnType] = new MutableList[MemAlnType]
 
     // NOTE: set opt.flag manually here!!! This should be modified from the logger!!!
     opt.flag = 24
 /*   
     println("[opt object] flag: " + opt.flag + " T: " + opt.T + " minSeedLen: " + opt.minSeedLen + " a: " + opt.a + " b: " + opt.b + " mapQCoefLen: " + opt.mapQCoefLen + " mapQCoefFac: " + opt.mapQCoefFac)
-
+*/
+/*
     var j = 0
     regs.foreach(r => {
       print("Reg " + j + "(")
@@ -47,7 +48,7 @@ object MemRegToADAMSAM {
         if(regs(i).secondary < 0 || ((opt.flag & MEM_F_ALL) > 0)) {
           if(regs(i).secondary < 0 || regs(i).score >= regs(regs(i).secondary).score * 0.5) {
             // debugging
-            //print("i=" + i + " ")
+            print("Aln " + i + " ")
             var aln = memRegToAln(opt, bns, pac, 101, seq, regs(i))   // NOTE: current data structure has not been obtained from RDD. We assume the length to be 101 here
             alns += aln
             aln.flag |= extraFlag   // flag secondary
@@ -479,13 +480,13 @@ object MemRegToADAMSAM {
         if(rBeg < pacLen) int2base = Array('A', 'C', 'G', 'T', 'N')
         else int2base = Array('T', 'G', 'C', 'A', 'N')        
 
-        println("numCigar: " + numCigar)
+        //println("numCigar: " + numCigar)
 
         for(k <- 0 to (numCigar - 1)) {
           val op = cigar.cigarSegs(k).op
           val len = cigar.cigarSegs(k).len
         
-          println("op " + op + ", len " + len)
+          //println("op " + op + ", len " + len)
   
           // match
           if(op == 0) {

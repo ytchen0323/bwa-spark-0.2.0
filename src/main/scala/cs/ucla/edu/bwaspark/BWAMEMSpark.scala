@@ -41,7 +41,7 @@ object BWAMEMSpark {
 
   class testRead {
     var seq: String = _
-    var regs: MutableList[MemAlnRegType] = new MutableList[MemAlnRegType]
+    var regs: Array[MemAlnRegType] = _
   }
 
   def main(args: Array[String]) {
@@ -73,7 +73,7 @@ object BWAMEMSpark {
     //loading reads
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read.fq")
     println("Load FASTQ files")
-
+/*
     var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_10Mreads.fq", 10000000)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_5reads_err.fq")
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_err.fq", 4)
@@ -93,11 +93,12 @@ object BWAMEMSpark {
       i += 1
       if((i % 10000) == 0) println(i)
       } )
-
+*/
 
 // Testing
-/*
+
     var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq", 80)
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No3.fq", 4)
     val regsAllReads = seqs.map(seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq))
 
     // print regs for all reads
@@ -114,9 +115,9 @@ object BWAMEMSpark {
       println("##############################################################")
       readNum += 1
     } )
-*/
 
-/*
+
+
     var testReads = new MutableList[testRead]
     for(i <- 0 to (seqs.length - 1)) {
       var read = new testRead
@@ -125,7 +126,13 @@ object BWAMEMSpark {
       testReads += read
     }
 
-    testReads.map(read => bwaMemWorker2(bwaMemOpt, read.regs, bwaIdx.bns, bwaIdx.pac, read.seq, 0) )
-*/
+    var i = 0
+    testReads.foreach(read => {
+      println
+      println("Read " + i)
+      bwaMemWorker2(bwaMemOpt, read.regs, bwaIdx.bns, bwaIdx.pac, read.seq, 0) 
+      i += 1
+      } )
+
   } 
 }
