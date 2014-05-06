@@ -88,7 +88,9 @@ object BWAMemWorker1 {
         regArray.regs = regArray.regs.filter(r => (r != null))
         regArray.maxLength = regArray.regs.length
         assert(regArray.curLength == regArray.maxLength, "[Error] After filtering array elements")
+
 /*
+    println("##############################################################")
     var i = 0
     regArray.regs.foreach(r => {
         print("Reg " + i + "(")

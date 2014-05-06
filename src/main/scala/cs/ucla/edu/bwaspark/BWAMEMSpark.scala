@@ -99,6 +99,7 @@ object BWAMEMSpark {
 
     var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq", 80)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No3.fq", 4)
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No14.fq", 4)
     val regsAllReads = seqs.map(seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq))
 
     // print regs for all reads
