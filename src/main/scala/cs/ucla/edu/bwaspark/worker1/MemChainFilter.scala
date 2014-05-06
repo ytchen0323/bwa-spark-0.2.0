@@ -48,6 +48,10 @@ object MemChainFilter {
       }
       //else, do nothing
     }
+    weightQuery
+/*
+    //There might be a bug in the original code of BWA-MEM
+    //we firstly write the code according to its pattern
 
     var curRefEnd = 0l
     var weightRef = 0
@@ -72,6 +76,8 @@ object MemChainFilter {
     if (debugLevel > 0) println("Weight = " + min (weightQuery, weightRef))
 
     min (weightQuery, weightRef)
+*/
+
 
   }
 
