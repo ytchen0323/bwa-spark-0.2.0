@@ -134,7 +134,7 @@ object SWUtil {
         if(h < e) h = e
         if(h < f) h = f 
         h1 = h            // save H(i,j) to h1 for the next column
-        if(m < h) { 
+        if(m <= h) { 
           mj = j          // record the position where max score is achieved
           m = h           // m is stored at eh[mj+1]
         }
@@ -153,8 +153,8 @@ object SWUtil {
       eh(end).h = h1
       eh(end).e = 0
       // end == j after the previous loop
-      if(end == qLen) {
-        if(gscore < h1) {
+      if(j == qLen) {
+        if(gscore <= h1) {
           max_ie = i
           gscore = h1
         }
@@ -192,6 +192,8 @@ object SWUtil {
           end = j
         }
       }
+
+      //println(i + " " + max_ie + " " + gscore)  // testing
 
       i += 1
     }
