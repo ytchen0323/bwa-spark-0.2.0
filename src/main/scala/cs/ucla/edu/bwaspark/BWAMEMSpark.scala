@@ -106,6 +106,7 @@ object BWAMEMSpark {
     var readNum = 0
     regsAllReads.foreach(read => {
       var i = 0
+      println("#####")
       println("Read " + readNum)
       read.foreach(r => {
         print("Reg " + i + "(")
@@ -113,7 +114,6 @@ object BWAMEMSpark {
         println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ")")
         i += 1
       } )
-      println("##############################################################")
       readNum += 1
     } )
 

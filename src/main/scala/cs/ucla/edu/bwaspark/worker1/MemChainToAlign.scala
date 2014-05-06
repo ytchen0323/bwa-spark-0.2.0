@@ -39,12 +39,12 @@ object MemChainToAlign {
     var srt: Array[SRTType] = new Array[SRTType](chain.seeds.length) 
     var aw: Array[Int] = new Array[Int](2)
 
- 
+/* 
     // testing
-    //println("%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-    //for(seed <- chain.seeds)
-      //println("(" + seed.rBeg + ", " + seed.qBeg + ", " + seed.len + ")");
-
+    println("%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+    for(seed <- chain.seeds)
+      println("(" + seed.rBeg + ", " + seed.qBeg + ", " + seed.len + ")");
+*/
 
     // calculate the maximum possible span of this alignment
     rmax = getMaxSpan(opt, pacLen, queryLen, chain)
