@@ -34,18 +34,18 @@ close CIN;
 
 $c_read_num = $c_read_idx + 1;
 
-=h
-for($i = 0; $i < $c_read_num; $i++) {
-  for($j = 0; $j < ($cread_reg_num[$i] + 1); $j++) {
-    print "Reg $j ";
-    for($k = 0; $k < 12; $k++) {
-      print "$cread[$i][$j][$k] ";
-    }
-    print "\n";
-  }
-}
-print "\n";
-=cut
+
+#for($i = 0; $i < $c_read_num; $i++) {
+#  for($j = 0; $j < ($cread_reg_num[$i] + 1); $j++) {
+#    print "Reg $j ";
+#    for($k = 0; $k < 12; $k++) {
+#      print "$cread[$i][$j][$k] ";
+#    }
+#    print "\n";
+#  }
+#}
+#print "\n";
+
 
 for($i = 0; $i < $c_read_num; $i++) {
   splice(@tmp);
@@ -67,16 +67,16 @@ for($i = 0; $i < $c_read_num; $i++) {
   }
 }
 
-for($i = 0; $i < $c_read_num; $i++) {
-  for($j = 0; $j < ($cread_reg_num[$i] + 1); $j++) {
-    print "Reg $j ";
-    for($k = 0; $k < 12; $k++) {
-      print "$cread_sorted[$i][$j][$k] ";
-    }
-    print "\n";
-  }
-}
-print "\n";
+#for($i = 0; $i < $c_read_num; $i++) {
+#  for($j = 0; $j < ($cread_reg_num[$i] + 1); $j++) {
+#    print "Reg $j ";
+#    for($k = 0; $k < 12; $k++) {
+#      print "$cread_sorted[$i][$j][$k] ";
+#    }
+#    print "\n";
+#  }
+#}
+#print "\n";
 
 # Read the output file from Scala implementation
 

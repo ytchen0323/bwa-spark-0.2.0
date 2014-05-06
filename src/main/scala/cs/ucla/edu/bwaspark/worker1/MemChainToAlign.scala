@@ -69,7 +69,7 @@ object MemChainToAlign {
       i += 1
     }
     
-    srt = srt.sortBy(s => s.len)
+    srt = srt.sortBy(s => (s.len, s.index))
     //srt.map(s => println("(" + s.len + ", " + s.index + ")") )  // debugging message
 
     // The main for loop    
