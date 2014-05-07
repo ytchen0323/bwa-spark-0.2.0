@@ -24,9 +24,9 @@ object MemRegToADAMSAM {
     *  @param seq the read (NOTE: currently we use Array[Byte] first. may need to be changed back to Array[Char]!!!)
     *  @param regs the alignment registers to be transformed
     *  @param extraFlag
-    *  @param alns 
+    *  @param alnsIn currently we skip this parameter
     */
-  def memRegToSAMSe(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], seq: Array[Byte], regs: Array[MemAlnRegType], extraFlag: Int, alnsIn: MutableList[MemAlnType]) {
+  def memRegToSAMSe(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], seq: Array[Byte], regs: Array[MemAlnRegType], extraFlag: Int) {
     var alns: MutableList[MemAlnType] = new MutableList[MemAlnType]
 
     // NOTE: set opt.flag manually here!!! This should be modified from the logger!!!
@@ -466,6 +466,8 @@ object MemRegToADAMSAM {
           val ret = SWGlobal(queryLen, query, rlen.toInt, rseq, 5, mat, oDel, eDel, oIns, eIns, width.toInt, numCigar, cigar.cigarSegs)
           score = ret._1
           numCigar = ret._2
+
+          println("maxGap " + maxGap + "; numCigar " + numCigar)
         }
        
         // compute NM and MD

@@ -35,7 +35,8 @@ object BWAMemWorker2 {
       }
     }
 
-    memRegToSAMSe(opt, bns, pac, seq.toCharArray.map(ele => locusEncode(ele)), regsOut, 0, null)
+    //memRegToSAMSe(opt, bns, pac, seq.toCharArray.map(ele => locusEncode(ele)), regsOut, 0, null)
+    memRegToSAMSe(opt, bns, pac, seq.toCharArray.map(ele => locusEncode(ele)), regsOut, 0)
   }
 
 }
