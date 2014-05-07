@@ -18,29 +18,54 @@ import java.io.BufferedReader
 
 object BWAMEMSpark {
   // load reads from the FASTQ file (for testing use)
-  private def loadFASTQSeqs(fileName: String, readNum: Int): Array[String] = {
+  private def loadFASTQSeqs(fileName: String, readNum: Int): Array[FASTQSingleNode] = {
     
     val reader = new BufferedReader(new FileReader(fileName))
     var line = reader.readLine
     var i = 0
     var readIdx = 0    
-    var seqs = new Array[String](readNum / 4)
+    var seqs = new Array[FASTQSingleNode](readNum / 4)
 
     while(line != null) {
-      if(i % 4 == 1) {
-        seqs(readIdx) = line
-        readIdx += 1
+      //if(i % 4 == 1) {
+      //  seqs(readIdx) = line
+      //  readIdx += 1
+      //}
+      //i += 1
+      //line = reader.readLine
+
+      val lineFields = line.split(" ")
+      seqs(i) = new FASTQSingleNode
+  
+      if(lineFields.length == 1) {
+        seqs(i).name = lineFields(0)
+        seqs(i).seq = reader.readLine
+        seqs(i).seqLen = seqs(i).seq.size
+        reader.readLine
+        seqs(i).qual = reader.readLine
+        seqs(i).comment = ""
+        i += 1
       }
-      i += 1
+      else if(lineFields.length == 2) {
+        seqs(i).name = lineFields(0)
+        seqs(i).comment = lineFields(1)
+        seqs(i).seq = reader.readLine
+        seqs(i).seqLen = seqs(i).seq.size
+        reader.readLine
+        seqs(i).qual = reader.readLine
+        i += 1
+      }
+      else 
+        println("Error: Input format not handled")
+
       line = reader.readLine
     } 
 
-    //seqs.foreach(println(_))
     seqs
   }
 
   class testRead {
-    var seq: String = _
+    var seq: FASTQSingleNode = _
     var regs: Array[MemAlnRegType] = _
   }
 
@@ -103,7 +128,7 @@ object BWAMEMSpark {
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No14.fq", 4)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No33.fq", 4)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No32.fq", 4)
-    val regsAllReads = seqs.map(seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq))
+    val regsAllReads = seqs.map(seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.seqLen, seq.seq))
 
 /*
     // print regs for all reads

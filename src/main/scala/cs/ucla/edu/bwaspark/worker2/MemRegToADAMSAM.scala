@@ -1,7 +1,5 @@
 package cs.ucla.edu.bwaspark.worker2
 
-import scala.util.control.Breaks._
-import scala.List
 import scala.collection.mutable.MutableList
 import scala.math.log
 import scala.math.abs
@@ -43,7 +41,8 @@ object MemRegToADAMSAM {
       j += 1
       } )
 */
-    for(i <- 0 to (regs.length - 1)) {
+    var i = 0
+    while(i < regs.length) {
       if(regs(i).score >= opt.T) {
         if(regs(i).secondary < 0 || ((opt.flag & MEM_F_ALL) > 0)) {
           if(regs(i).secondary < 0 || regs(i).score >= regs(regs(i).secondary).score * 0.5) {
@@ -61,6 +60,8 @@ object MemRegToADAMSAM {
           }
         }
       }
+
+      i += 1
     }
 
     // no alignments good enough; then write an unaligned record
@@ -114,19 +115,20 @@ object MemRegToADAMSAM {
   // this one is not tested because it is never been used in 20 reads dataset
 
   private def getRlen(cigar: List[Int]) : Int = {
-
     var l: Int = 0
     val nCigar = cigar.length
-    for(k <- 0 to nCigar - 1) {
+
+    var k = 0
+    while(k < nCigar) {
       var op: Int = cigar(k) & 0xf
       if( op == 0 || op == 2) l += cigar(k) >>> 4
 
+      k += 1
     }
     l
   }
 	
 
-  // wrapper implementation only for now
   /**
     *  Transform the alignment registers to alignment type
     *
@@ -180,27 +182,36 @@ object MemRegToADAMSAM {
       var score = 0
       var lastScore = -(1 << 30)
 
-      breakable {
-        do {
-          // make a copy to pass into bwaGenCigar2
-          // if there is performance issue later, we may modify the underlying implementation
-          var query: Array[Byte] = new Array[Byte](qe - qb)
-          for(i <- 0 to (qe - qb - 1)) query(i) = seq(qb + i)
- 
-          var ret = bwaGenCigar2(opt.mat, opt.oDel, opt.eDel, opt.oIns, opt.eIns, w2, bns.l_pac, pac, qe - qb, query, rb, re)
-          score = ret._1
-          aln.nCigar = ret._2
-          aln.NM = ret._3
-          aln.cigar = ret._4
+      var isBreak = false
+      //breakable {
+      do {
+        // make a copy to pass into bwaGenCigar2
+        // if there is performance issue later, we may modify the underlying implementation
+        var query: Array[Byte] = new Array[Byte](qe - qb)
 
-          if(score == lastScore) break
+        var j = 0
+        while(j < (qe - qb)) {
+          query(j) = seq(qb + j)
+          j += 1
+        }
+ 
+        var ret = bwaGenCigar2(opt.mat, opt.oDel, opt.eDel, opt.oIns, opt.eIns, w2, bns.l_pac, pac, qe - qb, query, rb, re)
+        score = ret._1
+        aln.nCigar = ret._2
+        aln.NM = ret._3
+        aln.cigar = ret._4
+
+        if(score == lastScore) isBreak = true
+    
+        if(!isBreak) {
           lastScore = score
           w2 <<= 1
+        }
 
-          i += 1
-        } while(i < 3 && score < reg.trueScore - opt.a)
+        i += 1
+      } while(i < 3 && score < reg.trueScore - opt.a)
 
-      }
+      //}
 
       var pos: Long = 0
       var isRev: Int = 0
@@ -222,7 +233,8 @@ object MemRegToADAMSAM {
       if(aln.nCigar > 0) {
         if(aln.cigar.cigarSegs(0).op == 2) {
           pos += aln.cigar.cigarSegs(0).len
-          aln.cigar.cigarSegs = aln.cigar.cigarSegs.drop(1)
+          //aln.cigar.cigarSegs = aln.cigar.cigarSegs.drop(1)
+          aln.cigar.cigarSegs = aln.cigar.cigarSegs.tail
           aln.nCigar -= 1
         }
         else if(aln.cigar.cigarSegs(aln.nCigar - 1).op == 2) {            
@@ -246,7 +258,7 @@ object MemRegToADAMSAM {
           val cigarSeg = new CigarSegType
           cigarSeg.op = 3
           cigarSeg.len = clip5
-          aln.cigar.cigarSegs.+=:(cigarSeg)
+          aln.cigar.cigarSegs = aln.cigar.cigarSegs.+:(cigarSeg)  // prepend (Vector type)
           aln.nCigar += 1
         }
         
@@ -254,7 +266,7 @@ object MemRegToADAMSAM {
           val cigarSeg = new CigarSegType
           cigarSeg.op = 3
           cigarSeg.len = clip3
-          aln.cigar.cigarSegs += cigarSeg
+          aln.cigar.cigarSegs = aln.cigar.cigarSegs :+ cigarSeg  // append (Vector type)
           aln.nCigar += 1
         }
       }
@@ -268,6 +280,11 @@ object MemRegToADAMSAM {
       aln
     }
   }
+
+
+  //private def memAlnToSAM(bns: BNTSeqType, str: String, ) {
+
+  //}
 
   /**
     *  Calculate the approximate mapq value
@@ -344,7 +361,11 @@ object MemRegToADAMSAM {
         var queryArr: Array[Byte] = new Array[Byte](qEnd - qBeg)
         // make a copy to pass into bwaGenCigar2 
         // if there is performance issue later, we may modify the underlying implementation
-        for(i <- 0 to (qEnd - qBeg - 1)) queryArr(i) = query(qBeg + i)
+        var i = 0
+        while(i < (qEnd - qBeg)) {
+          queryArr(i) = query(qBeg + i)
+          i += 1
+        }
 
         val ret = bwaGenCigar2(mat, oDel, eDel, oIns, eIns, w, bns.l_pac, pac, qEnd - qBeg, queryArr, rBeg, rEnd)
         val numCigar = ret._2
@@ -353,47 +374,49 @@ object MemRegToADAMSAM {
         var x = rBeg
         var y = qBeg
 
-        breakable {
-          for(i <- 0 to (numCigar - 1)) {
-            val op = cigar.cigarSegs(i).op
-            val len = cigar.cigarSegs(i).len
+        var isBreak = false
+        i = 0
+        while(i < numCigar && !isBreak) {
+          val op = cigar.cigarSegs(i).op
+          val len = cigar.cigarSegs(i).len
 
-            if(op == 0) {
-              if(x <= cb && cb < x + len) {
-                qBegRet = (y + (cb - x)).toInt
-                rBegRet = cb
-              }
-              
-              if(x < ce && ce <= x + len) {
-                qEndRet = (y + (ce - x)).toInt
-                rEndRet = ce
-                break
-              }
-              else {
-                x += len
-                y += len
-              }
+          if(op == 0) {
+            if(x <= cb && cb < x + len) {
+              qBegRet = (y + (cb - x)).toInt
+              rBegRet = cb
             }
-            else if(op == 1) {
-              y += len
-            } 
-            else if(op == 2) {
-              if(x <= cb && cb < x + len) {
-                qBegRet = y
-                rBegRet = x + len
-              }
               
-              if(x < ce && ce <= x + len) {
-                qEndRet = y
-                rEndRet = x
-              }
-              else x += len
+            if(x < ce && ce <= x + len) {
+              qEndRet = (y + (ce - x)).toInt
+              rEndRet = ce
+              isBreak = true
             }
             else {
-              println("[Error] Should not be here!!!")
-              assert(false, "in bwaFixXref2()")
+              x += len
+              y += len
             }
           }
+          else if(op == 1) {
+            y += len
+          } 
+          else if(op == 2) {
+            if(x <= cb && cb < x + len) {
+              qBegRet = y
+              rBegRet = x + len
+            }
+              
+            if(x < ce && ce <= x + len) {
+              qEndRet = y
+              rEndRet = x
+            }
+            else x += len
+          }
+          else {
+            println("[Error] Should not be here!!!")
+            assert(false, "in bwaFixXref2()")
+          }
+
+          i += 1
         }
         // NOTE!!!: Need to be implemented!!! temporarily skip this for loop
       }
@@ -427,16 +450,22 @@ object MemRegToADAMSAM {
 
         // then reverse both query and rseq; this is to ensure indels to be placed at the leftmost position
         if(rBeg >= pacLen) {
-          for(i <- 0 to ((queryLen >> 1) - 1)) {
+          var i = 0
+          while(i < (queryLen >> 1)) {
             var tmp = query(i)
             query(i) = query(queryLen - 1 - i)
             query(queryLen - 1 - i) = tmp
+
+            i += 1
           }
             
-          for(i <- 0 to ((rlen >> 1) - 1).toInt) {
+          i = 0
+          while(i < (rlen >> 1).toInt) {
             var tmp = rseq(i)
             rseq(i) = rseq((rlen - 1 - i).toInt)
             rseq((rlen - 1 - i).toInt) = tmp
+
+            i += 1
           }
         }        
         // no gap; no need to do DP
@@ -447,10 +476,13 @@ object MemRegToADAMSAM {
           cigarSeg.len = queryLen 
           cigarSeg.op = 0
           numCigar = 1
-          cigar.cigarSegs += cigarSeg
+          cigar.cigarSegs = cigar.cigarSegs :+ cigarSeg   // append (Vector type)
 
-          for(i <- 0 to (queryLen - 1)) 
+          var i = 0
+          while(i < queryLen) {
             score += mat(rseq(i) * 5 + query(i))
+            i += 1
+          }
         }
         else {
           val maxIns = ((((queryLen + 1) >> 1) * mat(0) - oIns).toDouble / eIns + 1.0).toInt
@@ -463,11 +495,12 @@ object MemRegToADAMSAM {
           val minWidth = abs(rlen - queryLen) + 3
           if(width < minWidth) width = minWidth
           // NW alignment
-          val ret = SWGlobal(queryLen, query, rlen.toInt, rseq, 5, mat, oDel, eDel, oIns, eIns, width.toInt, numCigar, cigar.cigarSegs)
+          //val ret = SWGlobal(queryLen, query, rlen.toInt, rseq, 5, mat, oDel, eDel, oIns, eIns, width.toInt, numCigar, cigar.cigarSegs)
+          val ret = SWGlobal(queryLen, query, rlen.toInt, rseq, 5, mat, oDel, eDel, oIns, eIns, width.toInt, numCigar, cigar)
           score = ret._1
           numCigar = ret._2
 
-          println("maxGap " + maxGap + "; numCigar " + numCigar)
+          //println("maxGap " + maxGap + "; numCigar " + numCigar)
         }
        
         // compute NM and MD
@@ -484,7 +517,8 @@ object MemRegToADAMSAM {
 
         //println("numCigar: " + numCigar)
 
-        for(k <- 0 to (numCigar - 1)) {
+        var k = 0
+        while(k < numCigar) {
           val op = cigar.cigarSegs(k).op
           val len = cigar.cigarSegs(k).len
         
@@ -492,7 +526,8 @@ object MemRegToADAMSAM {
   
           // match
           if(op == 0) {
-            for(i <- 0 to (len - 1)) {
+            var i = 0
+            while(i < len) {
               if(query(x + i) != rseq(y + i)) {
                 cigar.cigarStr += u.toString
                 cigar.cigarStr += int2base(rseq(y + i))
@@ -500,6 +535,8 @@ object MemRegToADAMSAM {
                 u = 0
               }
               else u += 1
+
+              i += 1
             }
 
             x += len
@@ -512,7 +549,11 @@ object MemRegToADAMSAM {
               cigar.cigarStr += u.toString
               cigar.cigarStr += '^'
               
-              for(i <- 0 to (len - 1)) cigar.cigarStr += int2base(rseq(y + i))
+              var i = 0
+              while(i < len) {
+                cigar.cigarStr += int2base(rseq(y + i))
+                i += 1
+              }
               
               u = 0
               nGap += len
@@ -525,6 +566,8 @@ object MemRegToADAMSAM {
             x += len
             nGap += len
           }
+
+          k += 1
         }
         
         cigar.cigarStr += u.toString

@@ -1,9 +1,9 @@
 package cs.ucla.edu.bwaspark.datatype
 
-import scala.collection.mutable.MutableList
+import scala.collection.immutable.Vector
 
 class CigarType {
-  var cigarSegs: MutableList[CigarSegType] = new MutableList[CigarSegType]
+  var cigarSegs: Vector[CigarSegType] = scala.collection.immutable.Vector.empty
   var cigarStr: String = new String
 }
 

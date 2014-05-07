@@ -2,9 +2,9 @@ package cs.ucla.edu.bwaspark.util
 
 import scala.util.control.Breaks._
 import scala.math.abs
-import scala.collection.mutable.MutableList
+import scala.collection.immutable.Vector
 
-import cs.ucla.edu.bwaspark.datatype.CigarSegType
+import cs.ucla.edu.bwaspark.datatype.{CigarType, CigarSegType}
 
 object SWUtil {
   val MINUS_INF = -0x40000000
@@ -102,7 +102,6 @@ object SWUtil {
     var beg = 0
     var end = qLen
 
-    //breakable {
     var isBreak = false
     i = 0
     while(i < tLen && !isBreak) {
@@ -211,7 +210,8 @@ object SWUtil {
   
   def SWGlobal(
     qLen: Int, query: Array[Byte], tLen: Int, target: Array[Byte], m: Int, mat: Array[Byte],
-    oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, numCigar: Int, cigarSegs: MutableList[CigarSegType]): (Int, Int) = {
+    oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, numCigar: Int, cigar: CigarType): (Int, Int) = {
+    //oDel: Int, eDel: Int, oIns: Int, eIns: Int, w: Int, numCigar: Int, cigarSegs: Vector[CigarSegType]): (Int, Int) = {
 
     var eh: Array[EHType] = new Array[EHType](qLen + 1) // score array
     var qp: Array[Byte] = new Array[Byte](qLen * m) // query profile
@@ -219,6 +219,7 @@ object SWUtil {
     var oeIns = oIns + eIns
     var i = 0
     var k = 0
+    var j = 0
     var nCol = 0
 
     // maximum #columns of the backtrack matrix
@@ -226,26 +227,32 @@ object SWUtil {
     else nCol = 2 * w + 1
     var z: Array[Byte] = new Array[Byte](nCol * tLen)
 
-    for(i <- 0 until (qLen + 1))
+    while(i < (qLen + 1)) {
       eh(i) = new EHType(0, 0)
-
+      i += 1
+    }
 
     // generate the query profile
     i = 0
-    for(k <- 0 to (m - 1)) {
+    k = 0
+    while(k < m) {
       val p = k * m
-
-      for(j <- 0 to (qLen - 1)) {
+      
+      j = 0
+      while(j < qLen) {
         qp(i) = mat(p + query(j))
         i += 1
+        j += 1
       }
+
+      k += 1
     }
 
     // fill the first row
     eh(0).h = 0
     eh(0).e = MINUS_INF
 
-    var j = 1
+    j = 1
     while(j <= qLen && j <= w) {
       eh(j).h = -(oIns + eIns * j)
       eh(j).e = MINUS_INF
@@ -259,7 +266,8 @@ object SWUtil {
     }
 
     // DP loop
-    for(i <- 0 to (tLen - 1)) {
+    i = 0
+    while(i < tLen) {
       var f = MINUS_INF
       var qPtr = target(i) * qLen
       var zPtr = i * nCol
@@ -271,7 +279,8 @@ object SWUtil {
       if(i + w + 1 < qLen) end = i + w + 1  // only loop through [beg,end) of the query sequence
       if(beg == 0) h1 = -(oDel + eDel * (i + 1))
 
-      for(j <- beg to (end - 1)) {
+      j = beg
+      while(j < end) {
         // At the beginning of the loop: eh[j] = { H(i-1,j-1), E(i,j) }, f = F(i,j) and h1 = H(i,j-1)
         // Cells are computed in the following order:
         //   M(i,j)   = H(i-1,j-1) + S(i,j)
@@ -305,10 +314,14 @@ object SWUtil {
         else d |= 0
         if(f < t) f = t
         z(zPtr + j - beg) = d.toByte  // z[i,j] keeps h for the current cell and e/f for the next cell
-      }
 
+        j += 1
+      }
+ 
       eh(end).h = h1
       eh(end).e = MINUS_INF
+
+      i += 1
     }
     
     val score = eh(qLen).h
@@ -326,44 +339,51 @@ object SWUtil {
       else which = z(i * nCol + k) >>> (which << 1) & 3
 
       if(which == 0) { 
-        numCigarTmp = pushCigar(numCigarTmp, cigarSegs, 0, 1) 
+        numCigarTmp = pushCigar(numCigarTmp, cigar, 0, 1) 
         i -= 1
         k -= 1
       }
       else if(which == 1) {
-        numCigarTmp = pushCigar(numCigarTmp, cigarSegs, 2, 1)
+        numCigarTmp = pushCigar(numCigarTmp, cigar, 2, 1)
         i -= 1
       }
       else {
-        numCigarTmp = pushCigar(numCigarTmp, cigarSegs, 1, 1)
+        numCigarTmp = pushCigar(numCigarTmp, cigar, 1, 1)
         k -= 1
       }
     }
 
-    if(i >= 0) numCigarTmp = pushCigar(numCigarTmp, cigarSegs, 2, i + 1)
-    if(k >= 0) numCigarTmp = pushCigar(numCigarTmp, cigarSegs, 1, k + 1)
+    if(i >= 0) numCigarTmp = pushCigar(numCigarTmp, cigar, 2, i + 1)
+    if(k >= 0) numCigarTmp = pushCigar(numCigarTmp, cigar, 1, k + 1)
 
-    for(i <- 0 to ((numCigarTmp>>1) - 1)) {
-      var tmp = cigarSegs(i)
-      cigarSegs(i) = cigarSegs(numCigarTmp - 1 - i)
-      cigarSegs(numCigarTmp - 1 - i) = tmp
+    i = 0
+    while(i < (numCigarTmp>>1)) {
+      val opTmp = cigar.cigarSegs(i).op
+      val lenTmp = cigar.cigarSegs(i).len
+      cigar.cigarSegs(i).op = cigar.cigarSegs(numCigarTmp - 1 - i).op
+      cigar.cigarSegs(i).len = cigar.cigarSegs(numCigarTmp - 1 - i).len
+      cigar.cigarSegs(numCigarTmp - 1 - i).op = opTmp
+      cigar.cigarSegs(numCigarTmp - 1 - i).len = lenTmp
+
+      i += 1
     }
 
     (score, numCigarTmp)
   }
     
   
-  private def pushCigar(numCigar: Int, cigarSegs: MutableList[CigarSegType], op: Byte, len: Int): Int = {
+  //private def pushCigar(numCigar: Int, cigarSegs: Vector[CigarSegType], op: Byte, len: Int): Int = {
+  private def pushCigar(numCigar: Int, cigar: CigarType, op: Byte, len: Int): Int = {
     var numCigarTmp = numCigar
 
-    if(numCigarTmp == 0 || op != cigarSegs(numCigarTmp - 1).op) { 
+    if(numCigarTmp == 0 || op != cigar.cigarSegs(numCigarTmp - 1).op) { 
       var cigarSeg = new CigarSegType
       cigarSeg.len = len
       cigarSeg.op = op
-      cigarSegs += cigarSeg
+      cigar.cigarSegs = cigar.cigarSegs :+ cigarSeg   // append (Vector type)
       numCigarTmp += 1
     }
-    else cigarSegs(numCigarTmp - 1).len += len
+    else cigar.cigarSegs(numCigarTmp - 1).len += len
 
     numCigarTmp
   }
