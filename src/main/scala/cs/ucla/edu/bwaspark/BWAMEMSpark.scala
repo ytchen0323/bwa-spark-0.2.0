@@ -98,12 +98,14 @@ object BWAMEMSpark {
 // Testing
 
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq", 80)
-    var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_100reads.fq", 400)
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_100reads.fq", 400)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No3.fq", 4)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No14.fq", 4)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No33.fq", 4)
+    var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No32.fq", 4)
     val regsAllReads = seqs.map(seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq))
 
+/*
     // print regs for all reads
     var readNum = 0
     regsAllReads.foreach(read => {
@@ -119,7 +121,7 @@ object BWAMEMSpark {
       readNum += 1
     } )
 
-
+*/
 
     var testReads = new MutableList[testRead]
     for(i <- 0 to (seqs.length - 1)) {
