@@ -7,5 +7,6 @@ class FASTQSingleNode {
   var qual: String = new String
   var comment: String = new String
   var seqLen: Int = 0
+  var sam: String = new String
 }
 

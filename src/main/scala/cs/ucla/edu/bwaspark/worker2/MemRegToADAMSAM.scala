@@ -5,6 +5,7 @@ import scala.math.log
 import scala.math.abs
 
 import cs.ucla.edu.bwaspark.datatype._
+import cs.ucla.edu.bwaspark.sam.SAMHeader._
 import cs.ucla.edu.bwaspark.util.BNTSeqUtil._
 import cs.ucla.edu.bwaspark.util.SWUtil._
 
@@ -12,7 +13,10 @@ object MemRegToADAMSAM {
   val MEM_F_ALL = 0x8
   val MEM_F_NO_MULTI = 0x10
   val MEM_MAPQ_COEF = 30.0
-
+  val int2op = Array('M', 'I', 'D', 'S', 'H')
+  val int2forward = Array('A', 'C', 'G', 'T', 'N')
+  val int2reverse = Array('T', 'G', 'C', 'A', 'N')
+ 
   /**
     *  Transform the alignment registers to SAM format
     *  
@@ -22,13 +26,33 @@ object MemRegToADAMSAM {
     *  @param seq the read (NOTE: currently we use Array[Byte] first. may need to be changed back to Array[Char]!!!)
     *  @param regs the alignment registers to be transformed
     *  @param extraFlag
-    *  @param alnsIn currently we skip this parameter
+    *  @param alnIn currently we skip this parameter
     */
-  def memRegToSAMSe(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], seq: Array[Byte], regs: Array[MemAlnRegType], extraFlag: Int) {
+  def memRegToSAMSe(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], seq: FASTQSingleNode, regs: Array[MemAlnRegType], extraFlag: Int, alnMate: MemAlnType) {
     var alns: MutableList[MemAlnType] = new MutableList[MemAlnType]
 
     // NOTE: set opt.flag manually here!!! This should be modified from the logger!!!
     opt.flag = 24
+
+    //pre-process: transform A/C/G/T to 0,1,2,3
+    def locusEncode(locus: Char): Byte = {
+      //transforming from A/C/G/T to 0,1,2,3
+      locus match {
+        case 'A' => 0
+        case 'a' => 0
+        case 'C' => 1
+        case 'c' => 1
+        case 'G' => 2
+        case 'g' => 2
+        case 'T' => 3
+        case 't' => 3
+        case '-' => 5
+        case _ => 4
+      }
+    }
+
+    val seqTrans = seq.seq.toCharArray.map(ele => locusEncode(ele))
+
 /*   
     println("[opt object] flag: " + opt.flag + " T: " + opt.T + " minSeedLen: " + opt.minSeedLen + " a: " + opt.a + " b: " + opt.b + " mapQCoefLen: " + opt.mapQCoefLen + " mapQCoefFac: " + opt.mapQCoefFac)
 */
@@ -47,8 +71,8 @@ object MemRegToADAMSAM {
         if(regs(i).secondary < 0 || ((opt.flag & MEM_F_ALL) > 0)) {
           if(regs(i).secondary < 0 || regs(i).score >= regs(regs(i).secondary).score * 0.5) {
             // debugging
-            print("Aln " + i + " ")
-            var aln = memRegToAln(opt, bns, pac, 101, seq, regs(i))   // NOTE: current data structure has not been obtained from RDD. We assume the length to be 101 here
+            print("Aln " + i + " " +  regs(i).score + " ")
+            var aln = memRegToAln(opt, bns, pac, 101, seqTrans, regs(i))   // NOTE: current data structure has not been obtained from RDD. We assume the length to be 101 here
             alns += aln
             aln.flag |= extraFlag   // flag secondary
             if(regs(i).secondary >= 0) aln.sub = -1   // don't output sub-optimal score
@@ -64,15 +88,27 @@ object MemRegToADAMSAM {
       i += 1
     }
 
+    //seqTrans.foreach(print(_))
+    //println
+
     // no alignments good enough; then write an unaligned record
     if(alns.length == 0) { 
-      var aln = memRegToAln(opt, bns, pac, 101, seq, null)
+      var aln = memRegToAln(opt, bns, pac, 101, seqTrans, null)
       aln.flag |= extraFlag
-      //memAlnToSAM
+      var alnList = new Array[MemAlnType](1)
+      alnList(0) = aln
+
+      seq.sam += memAlnToSAM(bns, seq, seqTrans, alnList, 0, alnMate)
     }
     else {
-      //alns.foreach(memAlnToSAM)
+      var k = 0
+      val alnsArray = alns.toArray
+      while(k < alns.size) {
+        seq.sam += memAlnToSAM(bns, seq, seqTrans, alnsArray, k, alnMate)
+        k += 1
+      }
     }
+
   }
 
 
@@ -114,14 +150,12 @@ object MemRegToADAMSAM {
    */
   // this one is not tested because it is never been used in 20 reads dataset
 
-  private def getRlen(cigar: List[Int]) : Int = {
+  private def getRlen(cigarSegs: Vector[CigarSegType]) : Int = {
     var l: Int = 0
-    val nCigar = cigar.length
 
     var k = 0
-    while(k < nCigar) {
-      var op: Int = cigar(k) & 0xf
-      if( op == 0 || op == 2) l += cigar(k) >>> 4
+    while(k < cigarSegs.size) {
+      if(cigarSegs(k).op == 0 || cigarSegs(k).op == 2) l += cigarSegs(k).len
 
       k += 1
     }
@@ -183,7 +217,6 @@ object MemRegToADAMSAM {
       var lastScore = -(1 << 30)
 
       var isBreak = false
-      //breakable {
       do {
         // make a copy to pass into bwaGenCigar2
         // if there is performance issue later, we may modify the underlying implementation
@@ -209,9 +242,8 @@ object MemRegToADAMSAM {
         }
 
         i += 1
-      } while(i < 3 && score < reg.trueScore - opt.a)
+      } while(i < 3 && score < reg.trueScore - opt.a && !isBreak)
 
-      //}
 
       var pos: Long = 0
       var isRev: Int = 0
@@ -282,9 +314,221 @@ object MemRegToADAMSAM {
   }
 
 
-  //private def memAlnToSAM(bns: BNTSeqType, str: String, ) {
+  private def memAlnToSAM(bns: BNTSeqType, seq: FASTQSingleNode, seqTrans: Array[Byte], alnList: Array[MemAlnType], which: Int, alnMate: MemAlnType): String = {
+    var samStr = new String
+    var aln = alnList(which)
+    var alnTmp = aln.copy
+    var alnMateTmp: MemAlnType = null
+    if(alnMate != null) alnMateTmp = alnMate.copy 
 
-  //}
+    // set flag
+    if(alnMateTmp != null) alnTmp.flag |= 0x1 // is paired in sequencing
+    if(alnTmp.rid < 0) alnTmp.flag |= 0x4 // is mapped
+    if(alnMateTmp != null && alnMateTmp.rid < 0) alnTmp.flag |= 0x8 // is mate mapped
+    if(alnTmp.rid < 0 && alnMateTmp != null && alnMateTmp.rid >= 0) { // copy mate to alignment
+      alnTmp.rid = alnMateTmp.rid
+      alnTmp.pos = alnMateTmp.pos
+      alnTmp.isRev = alnMateTmp.isRev
+      alnTmp.nCigar = 0
+    }
+    if(alnMateTmp != null && alnMateTmp.rid < 0 && alnTmp.rid >= 0) { // copy alignment to mate
+      alnMateTmp.rid = alnTmp.rid
+      alnMateTmp.pos = alnTmp.pos
+      alnMateTmp.isRev = alnTmp.isRev
+      alnMateTmp.nCigar = 0
+    }
+    if(alnTmp.isRev > 0) alnTmp.flag |= 0x10 // is on the reverse strand
+    if(alnMateTmp != null && alnMateTmp.isRev > 0) alnTmp.flag |= 0x20 // is mate on the reverse strand
+       
+    // print up to CIGAR
+    samStr += seq.name   // QNAME
+    samStr += '\t'
+    if((alnTmp.flag & 0x10000) > 0) alnTmp.flag = (alnTmp.flag & 0xffff) | 0x100   // FLAG
+    else alnTmp.flag = (alnTmp.flag & 0xffff) | 0
+    samStr += alnTmp.flag.toString 
+    samStr += '\t'
+    if(alnTmp.rid >= 0) { // with coordinate
+      samStr += bns.anns(alnTmp.rid).name   // RNAME
+      samStr += '\t'
+      samStr += (alnTmp.pos + 1).toString   // POS
+      samStr += '\t'
+      samStr += alnTmp.mapq.toString   // MAPQ
+      samStr += '\t'
+
+      if(alnTmp.nCigar > 0) {   // aligned
+        var i = 0
+        while(i < alnTmp.nCigar) {
+          var c = alnTmp.cigar.cigarSegs(i).op
+          if(c == 3 || c == 4) 
+            if(which > 0) c = 4   // use hard clipping for supplementary alignments
+            else c = 3
+          samStr += alnTmp.cigar.cigarSegs(i).len.toString
+          samStr += int2op(c)
+          i += 1
+        }
+      }
+      else samStr += '*'
+    }
+    else samStr += "*\t0\t0\t*"   // without coordinte
+    samStr += '\t'
+
+    // print the mate position if applicable
+    if(alnMateTmp != null && alnMateTmp.rid >= 0) {
+      if(alnTmp.rid == alnMateTmp.rid) samStr += '='
+      else samStr += bns.anns(alnMateTmp.rid).name.toString
+      samStr += '\t'
+      samStr += (alnMateTmp.pos + 1).toString
+      samStr += '\t'
+      if(alnTmp.rid == alnMateTmp.rid) {
+        var p0: Long = -1
+        var p1: Long = -1
+        if(alnTmp.isRev > 0) p0 = alnTmp.pos + getRlen(alnTmp.cigar.cigarSegs) - 1
+        else p0 = alnTmp.pos
+        if(alnMateTmp.isRev > 0) p1 = alnMateTmp.pos + getRlen(alnMateTmp.cigar.cigarSegs) - 1
+        else p1 = alnMateTmp.pos
+        if(alnMateTmp.nCigar == 0 || alnTmp.nCigar == 0) samStr += '0'
+        else {
+          if(p0 > p1) samStr += (-(p0 - p1 + 1)).toString
+          else if(p0 < p1) samStr += (-(p0 - p1 - 1)).toString
+          else samStr += (-(p0 - p1)).toString
+        }
+      }
+      else samStr += '0'
+    }
+    else samStr += "*\t0\t0"
+    samStr += '\t'
+    
+    // print SEQ and QUAL
+    if((alnTmp.flag & 0x100) > 0) {   // for secondary alignments, don't write SEQ and QUAL
+      samStr += "*\t*"
+    }
+    else if(alnTmp.isRev == 0) {   // the forward strand
+      //println("Forward")
+      var qb = 0
+      var qe = seq.seqLen
+
+      if(alnTmp.nCigar > 0) {
+        if(which > 0 && (alnTmp.cigar.cigarSegs(0).op == 4 || alnTmp.cigar.cigarSegs(0).op == 3)) qb += alnTmp.cigar.cigarSegs(0).len
+        if(which > 0 && (alnTmp.cigar.cigarSegs(alnTmp.nCigar - 1).op == 4 || alnTmp.cigar.cigarSegs(alnTmp.nCigar - 1).op == 3)) qe -= alnTmp.cigar.cigarSegs(alnTmp.nCigar - 1).len
+      }
+
+      var i = qb
+      while(i < qe) {
+        samStr += int2forward(seqTrans(i))
+        i += 1
+      }
+      samStr += '\t'
+
+      if(seq.qual != "") {
+        var i = qb
+        val seqArray = seq.qual.toCharArray
+        while(i < qe) {
+          samStr += seqArray(i)
+          i += 1
+        }
+      }
+      else samStr += '*'
+    }
+    else {   // the reverse strand
+      //println("Reverse")
+      var qb = 0
+      var qe = seq.seqLen
+      
+      if(alnTmp.nCigar > 0) {
+        if(which > 0 && (alnTmp.cigar.cigarSegs(0).op == 4 || alnTmp.cigar.cigarSegs(0).op == 3)) qe -= alnTmp.cigar.cigarSegs(0).len
+        if(which > 0 && (alnTmp.cigar.cigarSegs(alnTmp.nCigar - 1).op == 4 || alnTmp.cigar.cigarSegs(alnTmp.nCigar - 1).op == 3)) qb += alnTmp.cigar.cigarSegs(alnTmp.nCigar - 1).len
+      }
+
+      var i = qe - 1
+      while(i >= qb) {
+        samStr += int2reverse(seqTrans(i))
+        i -= 1
+      }
+      samStr += '\t'
+
+      if(seq.qual != "") {
+        var i = qe - 1
+        val seqArray = seq.qual.toCharArray
+        while(i >= qb) {
+          samStr += seqArray(i)
+          i -= 1
+        }
+      }
+      else samStr += '*'
+    }
+
+    // print optional tags
+    if(alnTmp.nCigar > 0) {
+      samStr += "\tNM:i:"
+      samStr += alnTmp.NM.toString
+      samStr += "\tMD:Z:"
+      samStr += alnTmp.cigar.cigarStr
+    }
+    if(alnTmp.score >= 0) {
+      samStr += "\tAS:i:"
+      samStr += alnTmp.score.toString
+    }
+    if(alnTmp.sub >= 0) {
+      samStr += "\tXS:i:"
+      samStr += alnTmp.sub.toString
+    }
+    // Read group is read using SAMHeader class 
+    if(bwaReadGroupID != "") {
+      samStr += "\tRG:Z:"
+      samStr += bwaReadGroupID
+    }
+    
+    if((alnTmp.flag & 0x100) == 0) { // not multi-hit
+      var i = 0
+      var isBreak = false
+      while(i < alnList.size && !isBreak) {
+        if(i != which && (alnList(i).flag & 0x100) == 0) { 
+          isBreak = true 
+          i -= 1
+        }
+        i += 1
+      }
+
+      if(i < alnList.size) { // there are other primary hits; output them
+        samStr += "\tSA:Z:"
+        var j = 0
+        while(j < alnList.size) {
+          if(j != which && (alnList(j).flag & 0x100) == 0) { // proceed if: 1) different from the current; 2) not shadowed multi hit
+            samStr += bns.anns(alnList(j).rid).name
+            samStr += ','
+            samStr += (alnList(j).pos + 1).toString
+            samStr += ','
+            if(alnList(j).isRev == 0) samStr += '+'
+            else samStr += '-'
+            samStr += ','
+            
+            var k = 0
+            while(k < alnList(j).nCigar) {
+              samStr += alnList(j).cigar.cigarSegs(k).len
+              samStr += int2op(alnList(j).cigar.cigarSegs(k).op)
+              k += 1
+            }
+
+            samStr += ','
+            samStr += alnList(j).mapq.toString
+            samStr += ','
+            samStr += alnList(j).NM.toString
+            samStr += ';'
+
+          }
+          j += 1
+        }
+      } 
+    }
+
+    if(seq.comment != "") {
+      samStr += '\t'
+      samStr += seq.comment
+    }
+    samStr += '\n'
+
+    samStr
+  }
 
   /**
     *  Calculate the approximate mapq value
@@ -499,7 +743,6 @@ object MemRegToADAMSAM {
           val ret = SWGlobal(queryLen, query, rlen.toInt, rseq, 5, mat, oDel, eDel, oIns, eIns, width.toInt, numCigar, cigar)
           score = ret._1
           numCigar = ret._2
-
           //println("maxGap " + maxGap + "; numCigar " + numCigar)
         }
        

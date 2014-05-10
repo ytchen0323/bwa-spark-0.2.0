@@ -310,11 +310,13 @@ object SWUtil {
         if(e < t) e = t
         eh(j).e = e
         t = m - oeIns
+        f -= eIns
         if(f > t) d |= (2 << 4)  // if we want to halve the memory, use one bit only, instead of two (in original C implementation)
         else d |= 0
         if(f < t) f = t
         z(zPtr + j - beg) = d.toByte  // z[i,j] keeps h for the current cell and e/f for the next cell
 
+        //println("d " + d + ", j " + j + ", i " + i + ", m " + m + ", h1 " + h1 + ", e " + e + ", f " + f)
         j += 1
       }
  
@@ -325,6 +327,7 @@ object SWUtil {
     }
     
     val score = eh(qLen).h
+    //println("score: " + score)
     
     // backtrack
     var numCigarTmp = numCigar

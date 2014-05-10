@@ -10,6 +10,8 @@ import scala.collection.mutable.MutableList
 import cs.ucla.edu.bwaspark.datatype._
 import cs.ucla.edu.bwaspark.worker1.BWAMemWorker1._
 import cs.ucla.edu.bwaspark.worker2.BWAMemWorker2._
+import cs.ucla.edu.bwaspark.sam.SAMHeader._
+import cs.ucla.edu.bwaspark.sam.SAMWriter
 import cs.ucla.edu.bwaspark.debug.DebugFlag._
 import cs.ucla.edu.bwaspark.fastq._
 
@@ -38,7 +40,8 @@ object BWAMEMSpark {
       seqs(i) = new FASTQSingleNode
   
       if(lineFields.length == 1) {
-        seqs(i).name = lineFields(0)
+        if(lineFields(0).charAt(0) == '@') seqs(i).name = lineFields(0).substring(1).dropRight(2)
+        else seqs(i).name = lineFields(0).dropRight(2)
         seqs(i).seq = reader.readLine
         seqs(i).seqLen = seqs(i).seq.size
         reader.readLine
@@ -47,7 +50,8 @@ object BWAMEMSpark {
         i += 1
       }
       else if(lineFields.length == 2) {
-        seqs(i).name = lineFields(0)
+        if(lineFields(0).charAt(0) == '@') seqs(i).name = lineFields(0).substring(1).dropRight(2)
+        else seqs(i).name = lineFields(0).dropRight(2)
         seqs(i).comment = lineFields(1)
         seqs(i).seq = reader.readLine
         seqs(i).seqLen = seqs(i).seq.size
@@ -60,7 +64,8 @@ object BWAMEMSpark {
 
       line = reader.readLine
     } 
-
+    
+    //seqs.foreach(s => println(s.seq))
     seqs
   }
 
@@ -81,6 +86,11 @@ object BWAMEMSpark {
     //val fastqRDD = fastqRDDLoader.RDDLoadAll()
     //val fastqRDD = fastqRDDLoader.RDDLoad("hdfs://Jc11:9000/user/ytchen/ERR013140_2.filt.fastq.test4/2/")
 
+    if(bwaSetReadGroup("@RG\tID:HCC1954\tLB:HCC1954\tSM:HCC1954")) {
+      println("Read line: " + readGroupLine)
+      println("Read Group ID: " + bwaReadGroupID)
+    }
+    else println("Error on reading header")
 
     //loading index files
     println("Load Index Files")
@@ -128,6 +138,7 @@ object BWAMEMSpark {
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No14.fq", 4)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No33.fq", 4)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No32.fq", 4)
+    //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No12.fq", 4)
     val regsAllReads = seqs.map(seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.seqLen, seq.seq))
 
 /*
@@ -164,5 +175,10 @@ object BWAMEMSpark {
       i += 1
       } )
 
+    val samWriter = new SAMWriter("test.sam")
+    samWriter.init
+    samWriter.writeString(bwaGenSAMHeader(bwaIdx.bns))
+    testReads.foreach(r => samWriter.writeString((r.seq.sam)))
+    samWriter.close
   } 
 }
