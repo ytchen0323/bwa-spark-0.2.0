@@ -89,7 +89,7 @@ object BWAMemWorker1 {
         regArray.maxLength = regArray.regs.length
         assert(regArray.curLength == regArray.maxLength, "[Error] After filtering array elements")
 
-
+/*
     println("#####")
     var i = 0
     regArray.regs.foreach(r => {
@@ -98,7 +98,7 @@ object BWAMemWorker1 {
         println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ")")
         i += 1
     } )
-
+*/
         //last step: sorting and deduplication
         val pureRegArray = memSortAndDedup(regArray, opt.maskLevelRedun)
 

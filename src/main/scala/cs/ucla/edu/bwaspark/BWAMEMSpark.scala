@@ -108,7 +108,7 @@ object BWAMEMSpark {
     //loading reads
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read.fq")
     println("Load FASTQ files")
-/*
+
     var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_10Mreads.fq", 10000000)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_5reads_err.fq")
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_err.fq", 4)
@@ -118,20 +118,53 @@ object BWAMEMSpark {
     //val regsAllReads = seqs.map( seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq) )
     //println("Processing")
     
+    println("@Worker1")
     var i = 0
+    var regsAllReads: Array[Array[MemAlnRegType]] = new Array[Array[MemAlnRegType]](seqs.length)
     //val regsAllReads = seqs.map( {
-    val regsAllReads = seqs.foreach( {
-      seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.length, seq) 
+    //seqs.foreach( {
+      //seq => regsAllReads(i) = bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.seqLen, seq.seq) 
       //if(i >= 14700) debugLevel = 1
       //if(i >= 14700) println(i)
       //println("Read: " + i)
+      
+      //i += 1
+      //if((i % 10000) == 0) println(i)
+      //} )
+
+    while(i < seqs.length) {
+      regsAllReads(i) = bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seqs(i).seqLen, seqs(i).seq)
+      i += 1
+      if((i % 10000) == 0) println(i)
+    }
+
+    var testReads = new Array[testRead](seqs.length)
+    for(i <- 0 to (seqs.length - 1)) {
+      var read = new testRead
+      read.seq = seqs(i)
+      read.regs = regsAllReads(i)
+      testReads(i) = read
+    }
+
+    println("@Worker2")
+    i = 0
+    testReads.foreach(read => {
+      //println
+      //println("Read " + i)
+      bwaMemWorker2(bwaMemOpt, read.regs, bwaIdx.bns, bwaIdx.pac, read.seq, 0) 
       i += 1
       if((i % 10000) == 0) println(i)
       } )
-*/
+
+    val samWriter = new SAMWriter("test.sam")
+    samWriter.init
+    samWriter.writeString(bwaGenSAMHeader(bwaIdx.bns))
+    testReads.foreach(r => samWriter.writeString((r.seq.sam)))
+    samWriter.close
+
 
 // Testing
-
+/*
     var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq", 80)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_100reads.fq", 400)
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No3.fq", 4)
@@ -141,23 +174,23 @@ object BWAMEMSpark {
     //var seqs = loadFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_1read_No12.fq", 4)
     val regsAllReads = seqs.map(seq => bwaMemWorker1(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, null, seq.seqLen, seq.seq))
 
-/*
-    // print regs for all reads
-    var readNum = 0
-    regsAllReads.foreach(read => {
-      var i = 0
-      println("#####")
-      println("Read " + readNum)
-      read.foreach(r => {
-        print("Reg " + i + "(")
-        print(r.rBeg + ", " + r.rEnd + ", " + r.qBeg + ", " + r.qEnd + ", " + r.score + ", " + r.trueScore + ", ")
-        println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ")")
-        i += 1
-      } )
-      readNum += 1
-    } )
 
-*/
+    // print regs for all reads
+//    var readNum = 0
+//    regsAllReads.foreach(read => {
+//      var i = 0
+//     println("#####")
+//      println("Read " + readNum)
+//      read.foreach(r => {
+//        print("Reg " + i + "(")
+//        print(r.rBeg + ", " + r.rEnd + ", " + r.qBeg + ", " + r.qEnd + ", " + r.score + ", " + r.trueScore + ", ")
+//        println(r.sub + ", "  + r.csub + ", " + r.subNum + ", " + r.width + ", " + r.seedCov + ", " + r.secondary + ")")
+//        i += 1
+//      } )
+//      readNum += 1
+//    } )
+
+
 
     var testReads = new MutableList[testRead]
     for(i <- 0 to (seqs.length - 1)) {
@@ -169,8 +202,8 @@ object BWAMEMSpark {
 
     var i = 0
     testReads.foreach(read => {
-      println
-      println("Read " + i)
+      //println
+      //println("Read " + i)
       bwaMemWorker2(bwaMemOpt, read.regs, bwaIdx.bns, bwaIdx.pac, read.seq, 0) 
       i += 1
       } )
@@ -180,5 +213,6 @@ object BWAMEMSpark {
     samWriter.writeString(bwaGenSAMHeader(bwaIdx.bns))
     testReads.foreach(r => samWriter.writeString((r.seq.sam)))
     samWriter.close
+*/
   } 
 }

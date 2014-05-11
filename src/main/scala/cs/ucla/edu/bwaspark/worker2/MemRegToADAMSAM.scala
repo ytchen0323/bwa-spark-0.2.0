@@ -71,7 +71,7 @@ object MemRegToADAMSAM {
         if(regs(i).secondary < 0 || ((opt.flag & MEM_F_ALL) > 0)) {
           if(regs(i).secondary < 0 || regs(i).score >= regs(regs(i).secondary).score * 0.5) {
             // debugging
-            print("Aln " + i + " " +  regs(i).score + " ")
+            //print("Aln " + i + " " +  regs(i).score + " ")
             var aln = memRegToAln(opt, bns, pac, 101, seqTrans, regs(i))   // NOTE: current data structure has not been obtained from RDD. We assume the length to be 101 here
             alns += aln
             aln.flag |= extraFlag   // flag secondary
@@ -826,7 +826,7 @@ object MemRegToADAMSAM {
             //query(queryLen - 1 - i) = tmp
           //}
         
-        println(cigar.cigarStr)
+        //println(cigar.cigarStr)
 
         (score, numCigar, NM, cigar)
       }
