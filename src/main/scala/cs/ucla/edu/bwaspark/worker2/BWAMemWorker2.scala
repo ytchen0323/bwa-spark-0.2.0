@@ -15,7 +15,10 @@ object BWAMemWorker2 {
     *  @param seq the read (NOTE: currently we use Array[Byte] first. may need to be changed!!!)
     */
   def bwaMemWorker2(opt: MemOptType, regs: Array[MemAlnRegType], bns: BNTSeqType, pac: Array[Byte], seq: FASTQSingleNode, numProcessed: Long) {
-    val regsOut = memMarkPrimarySe(opt, regs, numProcessed)
+    var regsOut: Array[MemAlnRegType] = null
+    if(regs != null)
+      regsOut = memMarkPrimarySe(opt, regs, numProcessed)
+
     memRegToSAMSe(opt, bns, pac, seq, regsOut, 0, null)
   }
 
