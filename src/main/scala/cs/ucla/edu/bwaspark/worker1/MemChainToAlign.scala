@@ -437,10 +437,11 @@ object MemChainToAlign {
     }
 
     var reArray = new Array[Byte]((rmax(1) - rmax(0) - re).toInt)
+    var reInt = re.toInt
     // fill reArray
     i = 0
     while(i < (rmax(1) - rmax(0) - re).toInt) {
-      reArray(i) = rseq(re.toInt + i)
+      reArray(i) = rseq(reInt + i)
       i += 1
     }
 
